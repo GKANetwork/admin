@@ -377,159 +377,114 @@ export default function App() {
           </a>
         </div>
 
-        {/* Zone 2: Navigation Links (Clean: Landing Page Sections + Admin Form locally; internal tabs preserved in AI Studio) */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-          <button
-            type="button"
-            onClick={() => setActiveTab('history-listing')}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'history-listing'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2 font-bold'
-                : ''
-            }`}
-          >
-            <LayoutList className="w-4 h-4" />
-            <span>Landing Page Sections ({adminSections.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setActiveTab('admin-manager');
-            }}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'admin-manager'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2 font-bold'
-                : ''
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            <span>{editingId ? `Edit Section (${formCategory})` : 'Create Mobile Landing Page'}</span>
-          </button>
-
-          {/* Studio tabs only visible inside Google AI Studio preview */}
-          {isStudio && (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveTab('mobile-preview')}
-                className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'mobile-preview'
-                    ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                    : ''
-                }`}
-              >
-                Full Mobile App
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('storage-db')}
-                className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'storage-db'
-                    ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                    : ''
-                }`}
-              >
-                Local Storage &amp; DB
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('java-code')}
-                className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-                  activeTab === 'java-code'
-                    ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                    : ''
-                }`}
-              >
-                Profiles &amp; Java 17
-              </button>
-            </>
-          )}
-        </nav>
-
-        {/* Zone 3: Primary action button */}
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setActiveTab('admin-manager');
-              formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create Mobile Landing Page</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Viewport Navigation Strip */}
-      <div className="flex md:hidden items-center gap-1 px-4 py-2 bg-white border-b border-slate-200 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab('history-listing')}
-          className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
-            activeTab === 'history-listing'
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Landing Sections ({adminSections.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            resetForm();
-            setActiveTab('admin-manager');
-          }}
-          className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
-            activeTab === 'admin-manager'
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          {editingId ? 'Edit Section' : '+ Create Mobile Landing Page'}
-        </button>
+        {/* Zone 2: Studio preview tabs (only visible inside Google AI Studio preview) */}
         {isStudio && (
-          <>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
             <button
               type="button"
               onClick={() => setActiveTab('mobile-preview')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
                 activeTab === 'mobile-preview'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'text-slate-900 underline underline-offset-8 decoration-2'
+                  : ''
               }`}
             >
-              Mobile App
+              Full Mobile App
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('storage-db')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
                 activeTab === 'storage-db'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'text-slate-900 underline underline-offset-8 decoration-2'
+                  : ''
               }`}
             >
-              Storage &amp; DB
+              Local Storage &amp; DB
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('java-code')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
                 activeTab === 'java-code'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'text-slate-900 underline underline-offset-8 decoration-2'
+                  : ''
               }`}
             >
-              Profiles
+              Profiles &amp; Java 17
             </button>
-          </>
+          </nav>
         )}
-      </div>
+
+        {/* Zone 3: Primary action button */}
+        <div className="flex items-center gap-2.5">
+          {activeTab === 'admin-manager' ? (
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setActiveTab('history-listing');
+              }}
+              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              <span>Back to Listing</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setActiveTab('admin-manager');
+                formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Mobile Landing Page</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Mobile Viewport Navigation Strip (Studio Only) */}
+      {isStudio && (
+        <div className="flex md:hidden items-center gap-1 px-4 py-2 bg-white border-b border-slate-200 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('mobile-preview')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              activeTab === 'mobile-preview'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Mobile App
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('storage-db')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              activeTab === 'storage-db'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Storage &amp; DB
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('java-code')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              activeTab === 'java-code'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Profiles
+          </button>
+        </div>
+      )}
 
       {/* Main Desktop Viewport (1440px Baseline Container) */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-8">

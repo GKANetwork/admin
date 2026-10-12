@@ -134,12 +134,12 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-mono text-slate-500">
-                <th className="py-3 px-4 font-semibold">Year · Category</th>
-                <th className="py-3 px-4 font-semibold">Section Banner &amp; Details</th>
-                <th className="py-3 px-4 font-semibold">Publish State</th>
-                <th className="py-3 px-4 font-semibold">Latest History Event</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions (View / Edit / Delete)</th>
+              <tr className="border-b-2 border-slate-300 bg-slate-100 text-xs font-black text-slate-950 uppercase tracking-wider">
+                <th className="py-3.5 px-4 font-black text-slate-950">Year · Category</th>
+                <th className="py-3.5 px-4 font-black text-slate-950">Section Banner &amp; Details</th>
+                <th className="py-3.5 px-4 font-black text-slate-950">Publish State</th>
+                <th className="py-3.5 px-4 font-black text-slate-950">Latest History Event</th>
+                <th className="py-3.5 px-4 font-black text-slate-950 text-right">Actions (View / Edit / Delete)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
@@ -188,7 +188,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                     >
                       {/* Column 1: Year & Category */}
                       <td className="py-4 px-4 whitespace-nowrap font-mono tabular-nums">
-                        <div className="text-sm font-bold text-slate-900">
+                        <div className="text-sm font-normal text-slate-800">
                           {record.eventYear}
                         </div>
                         <div className="text-xs text-slate-600 mt-0.5">
@@ -227,7 +227,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                                 setViewingRecord(record);
                                 setViewingImageIndex(0);
                               }}
-                              className="text-sm font-semibold text-slate-900 hover:underline cursor-pointer line-clamp-1"
+                              className="text-sm font-normal text-slate-900 hover:underline cursor-pointer line-clamp-1"
                             >
                               {record.title}
                             </div>
