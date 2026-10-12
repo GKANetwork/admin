@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="gha-event-service"/>
+    <springProperty scope="context" name="ACTIVE_PROFILE" source="spring.profiles.active" defaultValue="dev"/>
+
+    <!-- Console Appender with Correlation ID, Profile, Thread, Class & Line Number for Debugging -->
+    <appender name="CONSOLE_DEBUG" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [profile=%property{ACTIVE_PROFILE}] [corrId=%X{correlationId:-N/A}] %-5level %logger{36}:%line - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Rolling File Appender for QA & PROD -->
+    <appender name="ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>./logs/${APP_NAME}-${ACTIVE_PROFILE}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>./logs/archived/${APP_NAME}-${ACTIVE_PROFILE}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [profile=%property{ACTIVE_PROFILE}] [corrId=%X{correlationId:-N/A}] %-5level %logger{36}:%line - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 1. DEV Profile: Full DEBUG logging to Console + File -->
+    <springProfile name="dev">
+        <logger name="com.gha.eventservice" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE_DEBUG"/>
+            <appender-ref ref="ROLLING_FILE"/>
+        </logger>
+        <logger name="org.springframework.data.mongodb.core.MongoTemplate" level="DEBUG"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_DEBUG"/>
+        </root>
+    </springProfile>
+
+    <!-- 2. QA Profile: DEBUG for GHA services, INFO for root, persisted to Rolling File -->
+    <springProfile name="qa">
+        <logger name="com.gha.eventservice" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE_DEBUG"/>
+            <appender-ref ref="ROLLING_FILE"/>
+        </logger>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_DEBUG"/>
+            <appender-ref ref="ROLLING_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 3. PROD Profile: INFO for GHA services, WARN for root -->
+    <springProfile name="prod">
+        <logger name="com.gha.eventservice" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE_DEBUG"/>
+            <appender-ref ref="ROLLING_FILE"/>
+        </logger>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE_DEBUG"/>
+            <appender-ref ref="ROLLING_FILE"/>
+        </root>
+    </springProfile>
+</configuration>

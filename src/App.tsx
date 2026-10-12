@@ -362,7 +362,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
       {/* Strict 3-Zone Top Bar Contract */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 sticky top-0 z-30">
+      <header className="flex items-center justify-between px-6 h-16 bg-white border-b border-slate-200 sticky top-0 z-30">
         {/* Zone 1: Single text element wordmark */}
         <div className="flex items-center gap-3">
           <a
@@ -418,19 +418,7 @@ export default function App() {
 
         {/* Zone 3: Primary action button */}
         <div className="flex items-center gap-2.5">
-          {activeTab === 'admin-manager' ? (
-            <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setActiveTab('history-listing');
-              }}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <LayoutList className="w-3.5 h-3.5" />
-              <span>Back to Listing</span>
-            </button>
-          ) : (
+          {activeTab === 'history-listing' && (
             <button
               type="button"
               onClick={() => {
@@ -438,9 +426,9 @@ export default function App() {
                 setActiveTab('admin-manager');
                 formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Create Mobile Landing Page</span>
             </button>
           )}
@@ -513,18 +501,18 @@ export default function App() {
         {/* TAB 1: ADMIN FORM FOR CREATION / EDITING WITH LIVE RIGHT-SIDE PREVIEW */}
         {activeTab === 'admin-manager' && (
           <div className="space-y-6">
-            {/* Top Navigation Back to Landing Sections Listing */}
-            <div className="pb-2">
+            {/* Frozen / Sticky Top Navigation Back to Landing Sections Listing */}
+            <div className="sticky top-16 z-20 -mt-2 -mx-6 px-6 py-2.5 bg-slate-50 border-b border-slate-200 shadow-xs flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => {
                   resetForm();
                   setActiveTab('history-listing');
                 }}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-4 py-2 text-xs font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-100 hover:border-slate-400 transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Landing Page Sections</span>
+                <ArrowLeft className="w-4 h-4 stroke-[2.5] text-slate-900" />
+                <span className="font-bold tracking-tight">Back to Landing Page Sections</span>
               </button>
             </div>
 

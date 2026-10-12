@@ -1,0 +1,49 @@
+# ===================================================================
+# DEV PROFILE (application-dev.yml)
+# Run with: -Dspring.profiles.active=dev or SPRING_PROFILES_ACTIVE=dev
+# Uses SeaweedFS Master (http://103.118.17.94:9333) + S3 (http://103.118.17.94:8333) bucket 'gha-files'
+# ===================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  cloud:
+    discovery:
+      enabled: ${EUREKA_ENABLED:false}
+    service-registry:
+      auto-registration:
+        enabled: ${EUREKA_ENABLED:false}
+  data:
+    mongodb:
+      uri: ${GHA_MONGO_URI:mongodb://localhost:27017/event}
+      database: ${GHA_MONGO_DB:event}
+
+gha:
+  environment: dev
+  blob-store:
+    provider: ${GHA_BLOB_PROVIDER:seaweedfs}
+    collection: ${GHA_BLOB_COLLECTION:gha-files}
+    base-path: ${GHA_BLOB_STORE_PATH:/gha-files}
+    seaweedfs-master-url: ${GHA_SEAWEEDFS_ENDPOINT:http://103.118.17.94:9333}
+    seaweedfs-filer-url: ${GHA_SEAWEEDFS_FILER_URL:http://127.0.0.1:8888}
+    seaweedfs-s3-url: ${GHA_SEAWEEDFS_S3_URL:http://103.118.17.94:8333}
+    s3-access-key: ${GHA_S3_ACCESS_KEY:admin}
+    s3-secret-key: ${GHA_S3_SECRET_KEY:qapassw0rd}
+    s3-region: ${GHA_S3_REGION:us-east-1}
+
+eureka:
+  client:
+    # Disabled by default in 'dev' so you don't need to run a Eureka server on localhost:8761
+    # Set EUREKA_ENABLED=true if running with a local Eureka server
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: ${EUREKA_ENABLED:false}
+    fetch-registry: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+logging:
+  level:
+    root: INFO
+    com.gha.eventservice: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG

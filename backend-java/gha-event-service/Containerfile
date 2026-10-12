@@ -1,0 +1,12 @@
+# Podman Containerfile for JKCBase/app-eventservice (Java 17)
+FROM docker.io/library/maven:3.9.9-eclipse-temurin-17-alpine AS build
+WORKDIR /workspace
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM docker.io/library/eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /workspace/target/app-eventservice-1.0.0.jar /app/app-eventservice.jar
+EXPOSE 8082
+ENTRYPOINT ["java", "-jar", "/app/app-eventservice.jar"]

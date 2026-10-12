@@ -1,0 +1,31 @@
+# ===================================================================
+# QA PROFILE (application-qa.yml)
+# Run with: -Dspring.profiles.active=qa or SPRING_PROFILES_ACTIVE=qa
+# Uses QA SeaweedFS Filer container + MongoDB event_db + DEBUG/INFO logging
+# ===================================================================
+spring:
+  config:
+    activate:
+      on-profile: qa
+  data:
+    mongodb:
+      uri: ${GHA_MONGO_URI:mongodb://gha-mongodb-qa:27017/event_db}
+      database: ${GHA_MONGO_DB:event_db}
+
+gha:
+  environment: qa
+  blob-store:
+    provider: ${GHA_BLOB_PROVIDER:seaweedfs}
+    base-path: ${GHA_BLOB_STORE_PATH:/seaweedfs/qa/gha-event-media/landing-sections}
+    seaweedfs-filer-url: ${GHA_SEAWEEDFS_ENDPOINT:http://gha-seaweedfs-qa:8888}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://gha-eureka-qa:8761/eureka/}
+
+logging:
+  level:
+    root: INFO
+    com.gha.eventservice: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: INFO

@@ -82,7 +82,7 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
       : 'bg-amber-600 text-white';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs sticky top-24 space-y-4">
+    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs sticky top-32 space-y-4">
       {/* Header bar */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-200">
         <div className="flex items-center gap-2">

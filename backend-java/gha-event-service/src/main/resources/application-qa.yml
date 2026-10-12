@@ -1,0 +1,42 @@
+# ===================================================================
+# QA PROFILE (application-qa.yml)
+# Run with: -Dspring.profiles.active=qa or SPRING_PROFILES_ACTIVE=qa
+# Uses SeaweedFS Master (http://103.118.17.94:9333) + collection 'gha-files'
+# ===================================================================
+spring:
+  config:
+    activate:
+      on-profile: qa
+  cloud:
+    discovery:
+      enabled: ${EUREKA_ENABLED:false}
+    service-registry:
+      auto-registration:
+        enabled: ${EUREKA_ENABLED:false}
+  data:
+    mongodb:
+      uri: ${GHA_MONGO_URI:mongodb://gha-mongodb-qa:27017/event}
+      database: ${GHA_MONGO_DB:event}
+
+gha:
+  environment: qa
+  blob-store:
+    provider: ${GHA_BLOB_PROVIDER:seaweedfs}
+    collection: ${GHA_BLOB_COLLECTION:gha-files}
+    base-path: ${GHA_BLOB_STORE_PATH:/gha-files}
+    seaweedfs-master-url: ${GHA_SEAWEEDFS_ENDPOINT:http://103.118.17.94:9333}
+    seaweedfs-filer-url: ${GHA_SEAWEEDFS_ENDPOINT:http://103.118.17.94:9333}
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: ${EUREKA_ENABLED:false}
+    fetch-registry: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://gha-eureka-qa:8761/eureka/}
+
+logging:
+  level:
+    root: INFO
+    com.gha.eventservice: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: INFO

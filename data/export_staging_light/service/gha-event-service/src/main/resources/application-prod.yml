@@ -1,0 +1,32 @@
+# ===================================================================
+# PROD PROFILE (application-prod.yml)
+# Run on Hosting Raja VPS with: SPRING_PROFILES_ACTIVE=prod
+# Uses Production SeaweedFS Blob Store + MongoDB event_db + Structured INFO/WARN logs
+# ===================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    mongodb:
+      uri: ${GHA_MONGO_URI:mongodb://mongodb:27017/event_db}
+      database: ${GHA_MONGO_DB:event_db}
+
+gha:
+  environment: prod
+  blob-store:
+    provider: ${GHA_BLOB_PROVIDER:seaweedfs}
+    base-path: ${GHA_BLOB_STORE_PATH:/seaweedfs/buckets/gha-event-media/landing-sections}
+    seaweedfs-filer-url: ${GHA_SEAWEEDFS_ENDPOINT:http://seaweedfs:8888}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+
+logging:
+  level:
+    root: WARN
+    com.gha.eventservice: INFO
+  file:
+    name: /var/log/gha/gha-event-service-prod.log
