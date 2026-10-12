@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -10,6 +11,193 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const SEAWEED_S3_ENDPOINT = process.env.GHA_SEAWEEDFS_S3_ENDPOINT || 'http://103.118.17.94:8333';
+const SEAWEED_S3_ACCESS_KEY = process.env.GHA_SEAWEEDFS_S3_ACCESS_KEY || 'admin';
+const SEAWEED_S3_SECRET_KEY = process.env.GHA_SEAWEEDFS_S3_SECRET_KEY || 'qapassw0rd';
+const SEAWEED_S3_REGION = process.env.GHA_SEAWEEDFS_S3_REGION || 'us-east-1';
+const SEAWEED_S3_BUCKET = 'gha-files';
+
+function sha256Hex(data: Buffer | string): string {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+function hmacSha256(key: Buffer | string, data: string): Buffer {
+  return crypto.createHmac('sha256', key).update(data, 'utf8').digest();
+}
+
+function buildAwsSigV4Headers(
+  method: string,
+  urlObj: URL,
+  payload: Buffer,
+  contentType?: string
+): Record<string, string> {
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = sha256Hex(payload);
+  const hostHeader = urlObj.port ? `${urlObj.hostname}:${urlObj.port}` : urlObj.hostname;
+
+  const canonicalHeadersMap: Record<string, string> = {
+    host: hostHeader,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+  };
+  if (contentType) {
+    canonicalHeadersMap['content-type'] = contentType;
+  }
+
+  const sortedHeaderKeys = Object.keys(canonicalHeadersMap).sort();
+  const canonicalHeaders = sortedHeaderKeys
+    .map((k) => `${k}:${canonicalHeadersMap[k].trim()}\n`)
+    .join('');
+  const signedHeaders = sortedHeaderKeys.join(';');
+
+  const sortedQueryParams = Array.from(urlObj.searchParams.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+
+  const canonicalRequest = [
+    method,
+    urlObj.pathname,
+    sortedQueryParams,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
+
+  const credentialScope = `${dateStamp}/${SEAWEED_S3_REGION}/s3/aws4_request`;
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest),
+  ].join('\n');
+
+  const kDate = hmacSha256(`AWS4${SEAWEED_S3_SECRET_KEY}`, dateStamp);
+  const kRegion = hmacSha256(kDate, SEAWEED_S3_REGION);
+  const kService = hmacSha256(kRegion, 's3');
+  const kSigning = hmacSha256(kService, 'aws4_request');
+  const signature = hmacSha256(kSigning, stringToSign).toString('hex');
+
+  const authorization = `AWS4-HMAC-SHA256 Credential=${SEAWEED_S3_ACCESS_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const headers: Record<string, string> = {
+    Authorization: authorization,
+    'x-amz-date': amzDate,
+    'x-amz-content-sha256': payloadHash,
+  };
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+  return headers;
+}
+
+export interface LiveS3ObjectItem {
+  key: string;
+  lastModified: string;
+  eTag: string;
+  size: number;
+  s3Uri: string;
+  httpUrl: string;
+}
+
+async function putObjectToSeaweedS3(
+  objectKey: string,
+  buffer: Buffer,
+  mimeType: string
+): Promise<{ ok: boolean; status: number; eTag: string; s3Uri: string; errorText?: string }> {
+  const cleanKey = objectKey.replace(/^\/+/, '').replace(/^gha-files\/+/, '');
+  const encodedKey = cleanKey
+    .split('/')
+    .map((seg) => encodeURIComponent(seg))
+    .join('/');
+  const targetUrl = new URL(`${SEAWEED_S3_ENDPOINT}/${SEAWEED_S3_BUCKET}/${encodedKey}`);
+  const headers = buildAwsSigV4Headers('PUT', targetUrl, buffer, mimeType);
+
+  const response = await fetch(targetUrl.toString(), {
+    method: 'PUT',
+    headers,
+    body: new Uint8Array(buffer),
+  });
+  const eTag = (response.headers.get('etag') || '').replace(/"/g, '');
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    return {
+      ok: false,
+      status: response.status,
+      eTag,
+      s3Uri: `s3://${SEAWEED_S3_BUCKET}/${cleanKey}`,
+      errorText: errText.slice(0, 300),
+    };
+  }
+  return {
+    ok: true,
+    status: response.status,
+    eTag,
+    s3Uri: `s3://${SEAWEED_S3_BUCKET}/${cleanKey}`,
+  };
+}
+
+async function listObjectsFromSeaweedS3(): Promise<LiveS3ObjectItem[]> {
+  const targetUrl = new URL(`${SEAWEED_S3_ENDPOINT}/${SEAWEED_S3_BUCKET}/`);
+  const emptyBuf = Buffer.alloc(0);
+  const headers = buildAwsSigV4Headers('GET', targetUrl, emptyBuf);
+  const response = await fetch(targetUrl.toString(), {
+    method: 'GET',
+    headers,
+  });
+  const xml = await response.text();
+  if (!response.ok) {
+    throw new Error(`S3 GET returned HTTP ${response.status}: ${xml.slice(0, 200)}`);
+  }
+
+  const items: LiveS3ObjectItem[] = [];
+  const contentsRegex = /<Contents>([\s\S]*?)<\/Contents>/g;
+  let match: RegExpExecArray | null;
+  while ((match = contentsRegex.exec(xml)) !== null) {
+    const block = match[1];
+    const keyMatch = block.match(/<Key>([\s\S]*?)<\/Key>/);
+    const modMatch = block.match(/<LastModified>([\s\S]*?)<\/LastModified>/);
+    const etagMatch = block.match(/<ETag>([\s\S]*?)<\/ETag>/);
+    const sizeMatch = block.match(/<Size>([\s\S]*?)<\/Size>/);
+    if (keyMatch) {
+      const key = keyMatch[1];
+      items.push({
+        key,
+        lastModified: modMatch ? modMatch[1] : '',
+        eTag: etagMatch ? etagMatch[1].replace(/&quot;|"/g, '') : '',
+        size: sizeMatch ? Number(sizeMatch[1]) : 0,
+        s3Uri: `s3://${SEAWEED_S3_BUCKET}/${key}`,
+        httpUrl: `/api/v1/events/blobs?path=${encodeURIComponent(`/${SEAWEED_S3_BUCKET}/${key}`)}`,
+      });
+    }
+  }
+  return items.sort((a, b) => b.lastModified.localeCompare(a.lastModified));
+}
+
+async function getObjectFromSeaweedS3(
+  objectKey: string
+): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const cleanKey = objectKey.replace(/^\/+/, '').replace(/^gha-files\/+/, '');
+  const encodedKey = cleanKey
+    .split('/')
+    .map((seg) => encodeURIComponent(seg))
+    .join('/');
+  const targetUrl = new URL(`${SEAWEED_S3_ENDPOINT}/${SEAWEED_S3_BUCKET}/${encodedKey}`);
+  const headers = buildAwsSigV4Headers('GET', targetUrl, Buffer.alloc(0));
+  const response = await fetch(targetUrl.toString(), {
+    method: 'GET',
+    headers,
+  });
+  if (!response.ok) return null;
+  const arrayBuf = await response.arrayBuffer();
+  return {
+    buffer: Buffer.from(arrayBuf),
+    contentType: response.headers.get('content-type') || 'image/jpeg',
+  };
+}
 
 export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference';
 export type GhaProfile = 'dev' | 'qa' | 'prod';
@@ -84,9 +272,9 @@ export interface ProfileConfiguration {
 const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
   dev: {
     profile: 'dev',
-    blobProvider: 'local-fs',
-    blobStoreBasePath: './local-gha-blobs/dev/landing-sections',
-    seaweedFilerUrl: 'http://localhost:8888',
+    blobProvider: 'seaweedfs',
+    blobStoreBasePath: '/gha-files',
+    seaweedFilerUrl: 'http://103.118.17.94:8333',
     mongoDatabase: 'event_db',
     mongoUri: 'mongodb://localhost:27017/event_db',
     logLevel: 'DEBUG',
@@ -94,8 +282,8 @@ const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
   qa: {
     profile: 'qa',
     blobProvider: 'seaweedfs',
-    blobStoreBasePath: '/seaweedfs/qa/gha-event-media/landing-sections',
-    seaweedFilerUrl: 'http://gha-seaweedfs-qa:8888',
+    blobStoreBasePath: '/gha-files',
+    seaweedFilerUrl: 'http://103.118.17.94:8333',
     mongoDatabase: 'event_db',
     mongoUri: 'mongodb://gha-mongodb-qa:27017/event_db',
     logLevel: 'DEBUG',
@@ -103,10 +291,8 @@ const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
   prod: {
     profile: 'prod',
     blobProvider: 'seaweedfs',
-    blobStoreBasePath:
-      process.env.GHA_BLOB_STORE_PATH ||
-      '/seaweedfs/buckets/gha-event-media/landing-sections',
-    seaweedFilerUrl: process.env.GHA_SEAWEEDFS_ENDPOINT || 'http://seaweedfs:8888',
+    blobStoreBasePath: process.env.GHA_BLOB_STORE_PATH || '/gha-files',
+    seaweedFilerUrl: process.env.GHA_SEAWEEDFS_S3_ENDPOINT || 'http://103.118.17.94:8333',
     mongoDatabase: process.env.GHA_MONGO_DB || 'event_db',
     mongoUri: process.env.GHA_MONGO_URI || 'mongodb://mongodb:27017/event_db',
     logLevel: 'INFO',
@@ -178,7 +364,7 @@ export interface BlobStoragePort {
     mimeType: string,
     base64Data: string,
     correlationId: string
-  ): SectionImageAsset;
+  ): Promise<SectionImageAsset>;
   resolveBlobFile(blobPath: string): { filePath: string; mimeType: string } | null;
   getPhysicalStorageStats(): {
     physicalRootDir: string;
@@ -206,8 +392,8 @@ class MultiProfileBlobStorageStrategy implements BlobStoragePort {
       this.activeProfile,
       'gha-init',
       'INFO',
-      'c.g.e.i.b.LocalFileSystemBlobStorageAdapter',
-      `[LOCAL-BLOB-STORE] Initialized profile='${this.activeProfile}' provider='${this.getActiveProfileConfig().blobProvider}' basePath='${this.getActiveProfileConfig().blobStoreBasePath}'`
+      'c.g.e.i.b.SeaweedFsBlobStorageAdapter',
+      `[SEAWEEDFS-S3] Initialized profile='${this.activeProfile}' s3Endpoint='${SEAWEED_S3_ENDPOINT}' bucket='${SEAWEED_S3_BUCKET}'`
     );
   }
 
@@ -241,7 +427,7 @@ class MultiProfileBlobStorageStrategy implements BlobStoragePort {
       `prof-${Date.now().toString(36)}`,
       'INFO',
       adapterClass,
-      `Switched active Spring profile to '${profile}' -> provider='${cfg.blobProvider}', basePath='${cfg.blobStoreBasePath}', logLevel='${cfg.logLevel}'`
+      `Switched active Spring profile to '${profile}' -> provider='${cfg.blobProvider}', basePath='${cfg.blobStoreBasePath}', s3='${SEAWEED_S3_ENDPOINT}'`
     );
     return cfg;
   }
@@ -263,31 +449,24 @@ class MultiProfileBlobStorageStrategy implements BlobStoragePort {
     );
   }
 
-  storeBlob(
+  async storeBlob(
     category: LandingCategory,
     fileName: string,
     mimeType: string,
     base64Data: string,
     correlationId: string
-  ): SectionImageAsset {
+  ): Promise<SectionImageAsset> {
     const cfg = this.getActiveProfileConfig();
     const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     const timestamp = Date.now();
     const categoryDir = category.toLowerCase();
 
-    const blobPath = `${cfg.blobStoreBasePath}/${categoryDir}/${timestamp}_${cleanName}`;
+    const objectKey = `${categoryDir}/${timestamp}_${cleanName}`;
+    const blobPath = `${cfg.blobStoreBasePath}/${objectKey}`;
     const adapterName =
       cfg.blobProvider === 'local-fs'
         ? 'c.g.e.i.b.LocalFileSystemBlobStorageAdapter'
         : 'c.g.e.i.b.SeaweedFsBlobStorageAdapter';
-
-    this.logger.log(
-      this.activeProfile,
-      correlationId,
-      'DEBUG',
-      adapterName,
-      `[${cfg.blobProvider.toUpperCase()}] Writing image blob: category=${category}, fileName=${cleanName}, targetPath=${blobPath}`
-    );
 
     const rawBase64 = base64Data.includes(',')
       ? base64Data.split(',')[1]
@@ -306,13 +485,44 @@ class MultiProfileBlobStorageStrategy implements BlobStoragePort {
     };
     this.saveIndex();
 
-    this.logger.log(
-      this.activeProfile,
-      correlationId,
-      'INFO',
-      adapterName,
-      `[${cfg.blobProvider.toUpperCase()}] Stored blob (${buffer.length} bytes) -> DB path='${blobPath}'`
-    );
+    if (cfg.blobProvider === 'seaweedfs') {
+      try {
+        const s3Res = await putObjectToSeaweedS3(objectKey, buffer, mimeType || 'image/jpeg');
+        if (s3Res.ok) {
+          this.logger.log(
+            this.activeProfile,
+            correlationId,
+            'INFO',
+            adapterName,
+            `[SEAWEEDFS-S3] Uploaded ${buffer.length} bytes via AWS SigV4 PUT -> ${SEAWEED_S3_ENDPOINT}/${SEAWEED_S3_BUCKET}/${objectKey} (HTTP ${s3Res.status}, ETag=${s3Res.eTag})`
+          );
+        } else {
+          this.logger.log(
+            this.activeProfile,
+            correlationId,
+            'WARN',
+            adapterName,
+            `[SEAWEEDFS-S3] S3 PUT returned HTTP ${s3Res.status}: ${s3Res.errorText}`
+          );
+        }
+      } catch (err) {
+        this.logger.log(
+          this.activeProfile,
+          correlationId,
+          'WARN',
+          adapterName,
+          `[SEAWEEDFS-S3] S3 PUT failed: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    } else {
+      this.logger.log(
+        this.activeProfile,
+        correlationId,
+        'INFO',
+        adapterName,
+        `[LOCAL-FS] Stored blob (${buffer.length} bytes) -> DB path='${blobPath}'`
+      );
+    }
 
     return {
       blobPath,
@@ -1223,7 +1433,7 @@ async function startServer() {
   });
 
   // Create new Mobile Landing Page Section
-  app.post('/api/v1/events/landing-sections', (req: Request, res: Response) => {
+  app.post('/api/v1/events/landing-sections', async (req: Request, res: Response) => {
     const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-create';
     const activeCfg = blobStorage.getActiveProfileConfig();
 
@@ -1235,7 +1445,6 @@ async function startServer() {
         description,
         url,
         published,
-        displayOrder,
         uploadedImages,
       } = req.body;
 
@@ -1266,7 +1475,7 @@ async function startServer() {
       if (Array.isArray(uploadedImages) && uploadedImages.length > 0) {
         for (const img of uploadedImages) {
           if (img.base64Data && img.fileName) {
-            const asset = blobStorage.storeBlob(
+            const asset = await blobStorage.storeBlob(
               resolvedCategory,
               img.fileName,
               img.mimeType || 'image/jpeg',
@@ -1373,7 +1582,7 @@ async function startServer() {
   });
 
   // Update existing Mobile Landing Page Section on Save
-  app.put('/api/v1/events/landing-sections/:id', (req: Request, res: Response) => {
+  app.put('/api/v1/events/landing-sections/:id', async (req: Request, res: Response) => {
     const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-update';
     const activeCfg = blobStorage.getActiveProfileConfig();
     const existing = repository.findById(req.params.id);
@@ -1390,7 +1599,6 @@ async function startServer() {
       description,
       url,
       published,
-      displayOrder,
       retainedImages,
       uploadedImages,
     } = req.body;
@@ -1414,7 +1622,7 @@ async function startServer() {
     if (Array.isArray(uploadedImages) && uploadedImages.length > 0) {
       for (const img of uploadedImages) {
         if (img.base64Data && img.fileName) {
-          const stored = blobStorage.storeBlob(
+          const stored = await blobStorage.storeBlob(
             resolvedCategory,
             img.fileName,
             img.mimeType || 'image/jpeg',
@@ -1581,19 +1789,117 @@ async function startServer() {
     res.status(204).send();
   });
 
-  app.get('/api/v1/events/blobs', (req: Request, res: Response) => {
+  // Live S3 Bucket Listing on VPS (http://103.118.17.94:8333/gha-files/)
+  app.get('/api/v1/events/s3/list', async (req: Request, res: Response) => {
+    const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-s3-ls';
+    const activeCfg = blobStorage.getActiveProfileConfig();
+    try {
+      const objects = await listObjectsFromSeaweedS3();
+      logger.log(
+        activeCfg.profile,
+        corrId,
+        'DEBUG',
+        'c.g.e.i.b.SeaweedFsBlobStorageAdapter',
+        `[SEAWEEDFS-S3] Listed s3://${SEAWEED_S3_BUCKET}/ from ${SEAWEED_S3_ENDPOINT} -> ${objects.length} object(s)`
+      );
+      res.json({
+        endpoint: SEAWEED_S3_ENDPOINT,
+        bucket: SEAWEED_S3_BUCKET,
+        count: objects.length,
+        objects,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.log(
+        activeCfg.profile,
+        corrId,
+        'ERROR',
+        'c.g.e.i.b.SeaweedFsBlobStorageAdapter',
+        `[SEAWEEDFS-S3] Failed to list s3://${SEAWEED_S3_BUCKET}/: ${msg}`
+      );
+      res.status(502).json({ error: msg, endpoint: SEAWEED_S3_ENDPOINT, bucket: SEAWEED_S3_BUCKET });
+    }
+  });
+
+  // Direct Test Upload from Preview UI to VPS S3 (http://103.118.17.94:8333/gha-files/)
+  app.post('/api/v1/events/s3/upload', async (req: Request, res: Response) => {
+    const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-s3-put';
+    const activeCfg = blobStorage.getActiveProfileConfig();
+    try {
+      const { fileName, mimeType, base64Data, customKey } = req.body as {
+        fileName?: string;
+        mimeType?: string;
+        base64Data?: string;
+        customKey?: string;
+      };
+      if (!fileName || !base64Data) {
+        res.status(400).json({ error: 'fileName and base64Data are required' });
+        return;
+      }
+      const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const objectKey =
+        customKey && customKey.trim()
+          ? customKey.trim().replace(/^\/+/, '').replace(/^gha-files\/+/, '')
+          : cleanName;
+      const rawBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+      const buffer = Buffer.from(rawBase64, 'base64');
+
+      const result = await putObjectToSeaweedS3(objectKey, buffer, mimeType || 'image/jpeg');
+      if (!result.ok) {
+        logger.log(
+          activeCfg.profile,
+          corrId,
+          'ERROR',
+          'c.g.e.i.b.SeaweedFsBlobStorageAdapter',
+          `[SEAWEEDFS-S3] Direct PUT failed (HTTP ${result.status}): ${result.errorText}`
+        );
+        res.status(502).json({ error: result.errorText || `HTTP ${result.status}` });
+        return;
+      }
+
+      logger.log(
+        activeCfg.profile,
+        corrId,
+        'INFO',
+        'c.g.e.i.b.SeaweedFsBlobStorageAdapter',
+        `[SEAWEEDFS-S3] Direct PUT succeeded -> ${result.s3Uri} (${buffer.length} bytes, ETag=${result.eTag})`
+      );
+
+      const objects = await listObjectsFromSeaweedS3().catch(() => []);
+      res.status(201).json({
+        ok: true,
+        key: objectKey,
+        s3Uri: result.s3Uri,
+        eTag: result.eTag,
+        sizeBytes: buffer.length,
+        previewUrl: `/api/v1/events/blobs?path=${encodeURIComponent(`/${SEAWEED_S3_BUCKET}/${objectKey}`)}`,
+        objects,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.get('/api/v1/events/blobs', async (req: Request, res: Response) => {
     const blobPath = req.query.path as string;
     if (!blobPath) {
       res.status(400).send('Missing path query parameter');
       return;
     }
     const resolved = blobStorage.resolveBlobFile(blobPath);
-    if (!resolved) {
-      res.status(404).send('Blob not found in storage');
+    if (resolved) {
+      res.setHeader('Content-Type', resolved.mimeType);
+      res.sendFile(resolved.filePath);
       return;
     }
-    res.setHeader('Content-Type', resolved.mimeType);
-    res.sendFile(resolved.filePath);
+    const remoteObj = await getObjectFromSeaweedS3(blobPath).catch(() => null);
+    if (remoteObj) {
+      res.setHeader('Content-Type', remoteObj.contentType);
+      res.send(remoteObj.buffer);
+      return;
+    }
+    res.status(404).send('Blob not found in storage');
   });
 
   // Downloadable Full Project Bundle (.tar.gz) pre-structured into service/, ui/admin/, and ui/app/

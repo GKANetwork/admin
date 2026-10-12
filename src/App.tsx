@@ -16,6 +16,7 @@ import { MobileLandingPreview } from './components/MobileLandingPreview';
 import { JavaBackendInspector } from './components/JavaBackendInspector';
 import { LandingRecordsListingPage } from './components/LandingRecordsListingPage';
 import { ResilientSectionImage } from './components/ResilientSectionImage';
+import { LiveSeaweedS3Tester } from './components/LiveSeaweedS3Tester';
 import {
   Plus,
   Upload,
@@ -578,6 +579,13 @@ export default function App() {
         {/* TAB 1: DESKTOP ADMIN FORM + PAGINATED HISTORY LISTING + LIVE MOBILE PREVIEW */}
         {activeTab === 'admin-manager' && (
           <div className="space-y-8">
+            <LiveSeaweedS3Tester
+              refreshTrigger={refreshTrigger}
+              onUploadSuccess={(msg) => {
+                showToast('success', msg);
+                fetchAllData();
+              }}
+            />
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
               {/* Left 8 Columns: Admin Form */}
               <div className="xl:col-span-8 space-y-8" ref={formContainerRef}>
@@ -1064,6 +1072,13 @@ export default function App() {
         {/* TAB 4: LOCAL STORAGE & MONGODB (event_db) INSPECTOR */}
         {activeTab === 'storage-db' && (
           <div className="space-y-6">
+            <LiveSeaweedS3Tester
+              refreshTrigger={refreshTrigger}
+              onUploadSuccess={(msg) => {
+                showToast('success', msg);
+                fetchAllData();
+              }}
+            />
             <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
               <h2 className="text-lg font-semibold text-slate-900">
                 How Local Storage Works (Local File System vs. SeaweedFS Container)

@@ -2,5 +2,7 @@
   "name": "GHA Medical Conference Platform",
   "description": "Enterprise Desktop Administration Console and Mobile Landing Page Management for GHA Medical Conferences (CME, GSI, AHS/Course, and Conference) powered by GHA Gateway, GHA Event Service, MongoDB event_db, and SeaweedFS Blob Store.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
