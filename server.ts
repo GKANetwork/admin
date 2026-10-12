@@ -275,8 +275,8 @@ const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
     blobProvider: 'seaweedfs',
     blobStoreBasePath: '/gha-files',
     seaweedFilerUrl: 'http://103.118.17.94:8333',
-    mongoDatabase: 'event_db',
-    mongoUri: 'mongodb://localhost:27017/event_db',
+    mongoDatabase: 'event',
+    mongoUri: 'mongodb://localhost:27017/event',
     logLevel: 'DEBUG',
   },
   qa: {
@@ -284,8 +284,8 @@ const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
     blobProvider: 'seaweedfs',
     blobStoreBasePath: '/gha-files',
     seaweedFilerUrl: 'http://103.118.17.94:8333',
-    mongoDatabase: 'event_db',
-    mongoUri: 'mongodb://gha-mongodb-qa:27017/event_db',
+    mongoDatabase: 'event',
+    mongoUri: 'mongodb://gha-mongodb-qa:27017/event',
     logLevel: 'DEBUG',
   },
   prod: {
@@ -293,8 +293,8 @@ const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
     blobProvider: 'seaweedfs',
     blobStoreBasePath: process.env.GHA_BLOB_STORE_PATH || '/gha-files',
     seaweedFilerUrl: process.env.GHA_SEAWEEDFS_S3_ENDPOINT || 'http://103.118.17.94:8333',
-    mongoDatabase: process.env.GHA_MONGO_DB || 'event_db',
-    mongoUri: process.env.GHA_MONGO_URI || 'mongodb://mongodb:27017/event_db',
+    mongoDatabase: process.env.GHA_MONGO_DB || 'event',
+    mongoUri: process.env.GHA_MONGO_URI || 'mongodb://mongodb:27017/event',
     logLevel: 'INFO',
   },
 };
@@ -1336,6 +1336,88 @@ async function startServer() {
   app.delete('/api/v1/events/logs', (_req: Request, res: Response) => {
     logger.clearLogs();
     res.status(204).send();
+  });
+
+  // Live Upstream Proxy to Spring Boot gha-event-service (http://localhost:8082) -> MongoDB (event.landing_sections)
+  // When gha-event-service is running on :8082, all /api/v1/events/landing-sections* requests are forwarded to it.
+  // If gha-event-service returns an error, it is logged as ERROR and returned to the browser console.
+  // If :8082 is not running (e.g., in cloud preview), logs a clear WARN and falls back to the embedded preview store.
+  const UPSTREAM_EVENT_SERVICE = process.env.GHA_EVENT_SERVICE_URL || 'http://localhost:8082';
+  let loggedOfflineNotice = false;
+
+  app.use('/api/v1/events/landing-sections', async (req: Request, res: Response, next) => {
+    const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-proxy';
+    const activeCfg = blobStorage.getActiveProfileConfig();
+    const targetUrl = `${UPSTREAM_EVENT_SERVICE}${req.originalUrl}`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const isBodyMethod = ['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase());
+
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Correlation-Id': corrId,
+        },
+        body: isBodyMethod ? JSON.stringify(req.body ?? {}) : undefined,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      loggedOfflineNotice = false;
+
+      if (upstreamRes.status === 204) {
+        logger.log(
+          activeCfg.profile,
+          corrId,
+          'INFO',
+          'c.g.e.a.LandingSectionController',
+          `[SPRING-BOOT-8082] ${req.method} ${req.originalUrl} -> HTTP 204 (MongoDB event.landing_sections)`
+        );
+        res.status(204).send();
+        return;
+      }
+
+      const rawText = await upstreamRes.text();
+      if (!upstreamRes.ok) {
+        logger.log(
+          activeCfg.profile,
+          corrId,
+          'ERROR',
+          'c.g.e.a.LandingSectionController',
+          `[SPRING-BOOT-ERROR] ${req.method} ${targetUrl} failed with HTTP ${upstreamRes.status}: ${rawText}`
+        );
+        res
+          .status(upstreamRes.status)
+          .type('application/json')
+          .send(rawText || JSON.stringify({ error: `HTTP ${upstreamRes.status} from gha-event-service` }));
+        return;
+      }
+
+      logger.log(
+        activeCfg.profile,
+        corrId,
+        req.method === 'GET' ? 'DEBUG' : 'INFO',
+        'c.g.e.a.LandingSectionServiceImpl',
+        `[SPRING-BOOT-8082] ${req.method} ${req.originalUrl} -> HTTP ${upstreamRes.status} from MongoDB(event.landing_sections)`
+      );
+      res.status(upstreamRes.status).type('application/json').send(rawText);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (req.method !== 'GET' || !loggedOfflineNotice) {
+        loggedOfflineNotice = true;
+        logger.log(
+          activeCfg.profile,
+          corrId,
+          'WARN',
+          'c.g.g.f.GatewayRouteLoggingFilter',
+          `[SPRING-BOOT-OFFLINE] Cannot connect to ${UPSTREAM_EVENT_SERVICE} (${errMsg}) — using embedded preview store. Start gha-event-service on :8082 to read/write live MongoDB (event.landing_sections).`
+        );
+      }
+      next();
+    }
   });
 
   // Get single Landing Section by MongoDB _id (used when View or Edit is clicked)

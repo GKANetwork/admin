@@ -246,7 +246,7 @@ export default function App() {
         const updated = await gatewayClient.updateLandingSection(editingId, payload);
         showToast(
           'success',
-          `Updated ${updated.category} (${updated.eventYear}) record in event_db · ${
+          `Updated ${updated.category} (${updated.eventYear}) record in event.landing_sections · ${
             updated.published
               ? 'Published as active category card on Mobile App (4-Card Rule)'
               : 'Unpublished'
@@ -256,13 +256,14 @@ export default function App() {
         const created = await gatewayClient.createLandingSection(payload);
         showToast(
           'success',
-          `Saved ${created.category} (${created.eventYear}) section with ${created.images.length} image(s) to event_db`
+          `Saved ${created.category} (${created.eventYear}) section with ${created.images.length} image(s) to event.landing_sections`
         );
       }
 
       await fetchAllData();
       resetForm();
     } catch (err: unknown) {
+      console.error('[GHA-ADMIN-ERROR] Failed to save landing section:', err);
       const msg = err instanceof Error ? err.message : 'Failed to save landing section';
       showToast('error', msg);
     } finally {
@@ -296,7 +297,7 @@ export default function App() {
       await gatewayClient.deleteLandingSection(section.id);
       showToast(
         'success',
-        `Deleted ${section.category} (${section.eventYear}) section from event_db`
+        `Deleted ${section.category} (${section.eventYear}) section from event.landing_sections`
       );
       if (editingId === section.id) {
         resetForm();
@@ -495,7 +496,7 @@ export default function App() {
               <span>GHA Event Service (:8082)</span>
               <span aria-hidden="true">/</span>
               <span className="text-slate-900 font-semibold">
-                MongoDB ({gatewayConfig?.mongoDatabase || 'event_db'})
+                MongoDB ({gatewayConfig?.mongoDatabase || 'event'}.{gatewayConfig?.mongoCollection || 'landing_sections'})
               </span>
               <span aria-hidden="true">·</span>
               <span className="text-emerald-700 font-semibold">
@@ -599,7 +600,7 @@ export default function App() {
                       </h2>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {editingId
-                          ? 'Modifying any field or image below updates the existing record in MongoDB (event_db) when you click Save.'
+                          ? 'Modifying any field or image below updates the existing record in MongoDB (event.landing_sections) when you click Save.'
                           : 'Configure category (CME, GSI, Course / AHS, Conference), year, description, multiple images, and publish state.'}
                       </p>
                     </div>
@@ -862,7 +863,7 @@ export default function App() {
                           <span>
                             Target Blob Store Paths (from {gatewayConfig?.blobStoreProperty || 'gha.blob-store.base-path'}):
                           </span>
-                          <span>event_db.landing_sections.images[]</span>
+                          <span>event.landing_sections.images[]</span>
                         </div>
                         <div className="space-y-1 max-h-28 overflow-y-auto">
                           {plannedBlobPaths.map((p, idx) => (
@@ -1028,7 +1029,7 @@ export default function App() {
 
               <div className="border-t border-slate-200 pt-4">
                 <h3 className="text-xs font-semibold text-slate-700 mb-1">
-                  4-Card Rule &amp; Historical Re-Publish Matrix ({adminSections.length} Total in event_db)
+                  4-Card Rule &amp; Historical Re-Publish Matrix ({adminSections.length} Total in event.landing_sections)
                 </h3>
                 <p className="text-xs text-slate-500 mb-3">
                   At most 4 cards (1 per category: CME, GSI, Course / AHS, Conference) are live at any point. Pick any older unpublished record below and click <strong>Re-Publish</strong> to make it the active card for its category.
@@ -1123,7 +1124,7 @@ export default function App() {
                 <div className="flex items-center gap-2.5 mb-3">
                   <Database className="w-5 h-5 text-slate-800" />
                   <h2 className="text-base font-semibold text-slate-900">
-                    MongoDB Database: {gatewayConfig?.mongoDatabase || 'event_db'}
+                    MongoDB Database: {gatewayConfig?.mongoDatabase || 'event'} (Collection: landing_sections)
                   </h2>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed mb-4">

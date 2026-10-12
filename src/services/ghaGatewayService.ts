@@ -81,7 +81,7 @@ class GhaHttpGatewayAdapter implements GhaEventGatewayPort {
 
   async getAllAdminSections(): Promise<LandingSectionRecord[]> {
     const res = await fetch(`${this.baseUrl}/landing-sections/admin`);
-    if (!res.ok) throw new Error('Failed to load admin landing sections from event_db');
+    if (!res.ok) throw new Error('Failed to load admin landing sections from event.landing_sections');
     return res.json();
   }
 
