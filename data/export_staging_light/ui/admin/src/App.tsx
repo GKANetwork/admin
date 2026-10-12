@@ -16,6 +16,8 @@ import { MobileLandingPreview } from './components/MobileLandingPreview';
 import { JavaBackendInspector } from './components/JavaBackendInspector';
 import { LandingRecordsListingPage } from './components/LandingRecordsListingPage';
 import { ResilientSectionImage } from './components/ResilientSectionImage';
+import { LiveSeaweedS3Tester } from './components/LiveSeaweedS3Tester';
+import { FormLiveCardPreview } from './components/FormLiveCardPreview';
 import {
   Plus,
   Upload,
@@ -26,7 +28,18 @@ import {
   Terminal,
   Copy,
   Check,
+  ArrowLeft,
+  LayoutList,
+  Sparkles,
 } from 'lucide-react';
+
+// When running locally on Mac (localhost / 127.0.0.1 / custom domain), only Landing Listing & AdminForm are shown.
+// Advanced internal tabs (Storage & DB, Profiles & Java 17, SeaweedS3 tester) are retained for Google AI Studio preview.
+const isAiStudioEnvironment = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host.includes('aistudio') || host.includes('run.app') || window.location.search.includes('studio=true');
+};
 
 type ActiveWorkspaceTab =
   | 'admin-manager'
@@ -38,7 +51,9 @@ type ActiveWorkspaceTab =
 export default function App() {
   const gatewayClient = GhaGatewayClientFactory.getClient();
 
-  const [activeTab, setActiveTab] = useState<ActiveWorkspaceTab>('admin-manager');
+  const isStudio = isAiStudioEnvironment();
+  // By default, open Landing page which is the Listing page as requested
+  const [activeTab, setActiveTab] = useState<ActiveWorkspaceTab>('history-listing');
   const [gatewayConfig, setGatewayConfig] = useState<GhaGatewayConfigInfo | null>(null);
   const [adminSections, setAdminSections] = useState<LandingSectionRecord[]>([]);
   const [publishedSections, setPublishedSections] = useState<LandingSectionRecord[]>([]);
@@ -63,6 +78,7 @@ export default function App() {
   const [pendingUploads, setPendingUploads] = useState<PendingImageUpload[]>([]);
   const [copyingSyncCmd, setCopyingSyncCmd] = useState<boolean>(false);
   const [copiedSyncCmd, setCopiedSyncCmd] = useState<boolean>(false);
+  const [showTopBanner, setShowTopBanner] = useState<boolean>(true);
 
   const handleCopyMacSyncCommand = async () => {
     setCopyingSyncCmd(true);
@@ -245,7 +261,7 @@ export default function App() {
         const updated = await gatewayClient.updateLandingSection(editingId, payload);
         showToast(
           'success',
-          `Updated ${updated.category} (${updated.eventYear}) record in event_db · ${
+          `Updated ${updated.category} (${updated.eventYear}) record in event.landing_sections · ${
             updated.published
               ? 'Published as active category card on Mobile App (4-Card Rule)'
               : 'Unpublished'
@@ -255,13 +271,14 @@ export default function App() {
         const created = await gatewayClient.createLandingSection(payload);
         showToast(
           'success',
-          `Saved ${created.category} (${created.eventYear}) section with ${created.images.length} image(s) to event_db`
+          `Saved ${created.category} (${created.eventYear}) section with ${created.images.length} image(s) to event.landing_sections`
         );
       }
 
       await fetchAllData();
       resetForm();
     } catch (err: unknown) {
+      console.error('[GHA-ADMIN-ERROR] Failed to save landing section:', err);
       const msg = err instanceof Error ? err.message : 'Failed to save landing section';
       showToast('error', msg);
     } finally {
@@ -295,7 +312,7 @@ export default function App() {
       await gatewayClient.deleteLandingSection(section.id);
       showToast(
         'success',
-        `Deleted ${section.category} (${section.eventYear}) section from event_db`
+        `Deleted ${section.category} (${section.eventYear}) section from event.landing_sections`
       );
       if (editingId === section.id) {
         resetForm();
@@ -345,215 +362,168 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      {/* Top Banner Provision for GHA Admin Area */}
+      {showTopBanner && (
+        <div className="bg-slate-900 text-white px-6 py-2 text-xs border-b border-slate-800">
+          <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <span className="bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                GHA
+              </span>
+              <span className="font-semibold text-slate-200">
+                GHA Admin Area
+              </span>
+              <span className="text-slate-400 hidden sm:inline">
+                — Medical Conferences &amp; Mobile Landing Page Management
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTopBanner(false)}
+              className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs font-mono ml-4 shrink-0"
+              title="Dismiss banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Strict 3-Zone Top Bar Contract */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 sticky top-0 z-30">
+      <header className="flex items-center justify-between px-6 h-16 bg-white border-b border-slate-200 sticky top-0 z-30">
         {/* Zone 1: Single text element wordmark */}
-        <a
-          href="#top"
-          onClick={(e) => {
-            e.preventDefault();
-            setActiveTab('admin-manager');
-          }}
-          className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap"
-        >
-          GHA Conference Admin
-        </a>
-
-        {/* Zone 2: 5 clean text navigation links */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-          <button
-            type="button"
-            onClick={() => setActiveTab('admin-manager')}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'admin-manager'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                : ''
-            }`}
-          >
-            Admin Form &amp; Preview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('history-listing')}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'history-listing'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                : ''
-            }`}
-          >
-            History Listing ({adminSections.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('mobile-preview')}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'mobile-preview'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                : ''
-            }`}
-          >
-            Mobile App ({publishedSections.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('storage-db')}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'storage-db'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                : ''
-            }`}
-          >
-            Local Storage &amp; DB
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('java-code')}
-            className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === 'java-code'
-                ? 'text-slate-900 underline underline-offset-8 decoration-2'
-                : ''
-            }`}
-          >
-            Profiles &amp; Java 17
-          </button>
-        </nav>
-
-        {/* Zone 3: 2 primary actions (Copy Mac Sync Command + New Section) */}
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleCopyMacSyncCommand}
-            disabled={copyingSyncCmd}
-            className="px-3.5 py-2 text-xs font-semibold text-emerald-950 bg-emerald-100 border border-emerald-300 rounded-lg hover:bg-emerald-200 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer"
-            title="Copies a self-contained terminal command that extracts service/, ui/admin/, and ui/app/ directly into /Users/jayakumar/project/gha/mobile-app/code without curl auth issues"
-          >
-            {copiedSyncCmd ? (
-              <Check className="w-3.5 h-3.5 text-emerald-800" />
-            ) : (
-              <Copy className="w-3.5 h-3.5 text-emerald-800" />
-            )}
-            <span>
-              {copiedSyncCmd
-                ? 'Copied! Paste in Mac Terminal'
-                : copyingSyncCmd
-                ? 'Preparing...'
-                : 'Copy Mac Sync Command'}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setActiveTab('admin-manager');
-              formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
+        <div className="flex items-center gap-3">
+          <a
+            href="#top"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('history-listing');
             }}
-            className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer"
+            className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap hover:opacity-80 transition-opacity"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Section</span>
-          </button>
+            GHA Admin
+          </a>
+        </div>
+
+        {/* Zone 2: Studio preview tabs (only visible inside Google AI Studio preview) */}
+        {isStudio && (
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+            <button
+              type="button"
+              onClick={() => setActiveTab('mobile-preview')}
+              className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
+                activeTab === 'mobile-preview'
+                  ? 'text-slate-900 underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Full Mobile App
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('storage-db')}
+              className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
+                activeTab === 'storage-db'
+                  ? 'text-slate-900 underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Local Storage &amp; DB
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('java-code')}
+              className={`hover:text-slate-900 transition-colors whitespace-nowrap cursor-pointer ${
+                activeTab === 'java-code'
+                  ? 'text-slate-900 underline underline-offset-8 decoration-2'
+                  : ''
+              }`}
+            >
+              Profiles &amp; Java 17
+            </button>
+          </nav>
+        )}
+
+        {/* Zone 3: Primary action button */}
+        <div className="flex items-center gap-2.5">
+          {activeTab === 'history-listing' && (
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setActiveTab('admin-manager');
+                formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Create Mobile Landing Page</span>
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Mobile Viewport Navigation Strip */}
-      <div className="flex md:hidden items-center gap-1 px-4 py-2 bg-white border-b border-slate-200 overflow-x-auto">
-        {(
-          [
-            ['admin-manager', 'Admin Form'],
-            ['history-listing', `History (${adminSections.length})`],
-            ['mobile-preview', `Mobile App (${publishedSections.length})`],
-            ['storage-db', 'Storage & DB'],
-            ['java-code', 'Profiles & Logs'],
-          ] as const
-        ).map(([tabKey, label]) => (
+      {/* Mobile Viewport Navigation Strip (Studio Only) */}
+      {isStudio && (
+        <div className="flex md:hidden items-center gap-1 px-4 py-2 bg-white border-b border-slate-200 overflow-x-auto">
           <button
-            key={tabKey}
             type="button"
-            onClick={() => setActiveTab(tabKey)}
+            onClick={() => setActiveTab('mobile-preview')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
-              activeTab === tabKey
+              activeTab === 'mobile-preview'
                 ? 'bg-slate-900 text-white'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {label}
+            Mobile App
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('storage-db')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              activeTab === 'storage-db'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Storage &amp; DB
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('java-code')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+              activeTab === 'java-code'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Profiles
+          </button>
+        </div>
+      )}
+
+      {/* Frozen / Sticky Top Navigation Bar for Admin Form */}
+      {activeTab === 'admin-manager' && (
+        <div className="sticky top-16 z-20 bg-slate-50/95 backdrop-blur-xs border-b border-slate-200 shadow-xs px-6 py-2.5">
+          <div className="max-w-[1440px] mx-auto flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setActiveTab('history-listing');
+              }}
+              className="px-4 py-2 text-xs font-black text-slate-900 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-100 hover:border-slate-400 transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <ArrowLeft className="w-4 h-4 stroke-[3] text-slate-900" />
+              <span className="font-extrabold tracking-tight">Back to Landing Page</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Desktop Viewport (1440px Baseline Container) */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-8">
-        {/* Architecture, Active Spring Profile (dev/qa/prod) & Gateway Context Bar */}
-        <div className="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-5 border-b border-slate-200">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500 mb-1">
-              <span>Nginx Proxy</span>
-              <span aria-hidden="true">/</span>
-              <span>GHA Gateway (:8080)</span>
-              <span aria-hidden="true">/</span>
-              <span>GHA Event Service (:8082)</span>
-              <span aria-hidden="true">/</span>
-              <span className="text-slate-900 font-semibold">
-                MongoDB ({gatewayConfig?.mongoDatabase || 'event_db'})
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="text-emerald-700 font-semibold">
-                {gatewayConfig?.blobProvider === 'local-fs'
-                  ? 'Local Disk Blob Store'
-                  : 'SeaweedFS Blob Store'}
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Mobile Landing Page Administration &amp; History
-            </h1>
-          </div>
 
-          {/* Interactive 3-Profile Selector (dev, qa, prod) + Summary Stats */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-1 p-1 bg-slate-200/80 rounded-lg">
-              {(['dev', 'qa', 'prod'] as const).map((prof) => {
-                const active = (gatewayConfig?.activeProfile || 'dev') === prof;
-                return (
-                  <button
-                    key={prof}
-                    type="button"
-                    onClick={() => handleSwitchProfile(prof)}
-                    className={`px-3 py-1 text-xs font-mono font-semibold rounded-md transition-colors cursor-pointer ${
-                      active
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {prof.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center gap-3 text-xs text-slate-600 font-mono tabular-nums">
-              <div>
-                <span className="text-slate-400">Published: </span>
-                <span className="font-semibold text-emerald-700">
-                  {publishedSections.length}
-                </span>
-              </div>
-              <span aria-hidden="true">·</span>
-              <div>
-                <span className="text-slate-400">Unpublished: </span>
-                <span className="font-semibold text-amber-700">
-                  {Math.max(0, adminSections.length - publishedSections.length)}
-                </span>
-              </div>
-              <span aria-hidden="true">·</span>
-              <div>
-                <span className="text-slate-400">Total: </span>
-                <span className="font-semibold text-slate-900">
-                  {adminSections.length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Toast Feedback Banner */}
         {feedbackBanner && (
@@ -575,26 +545,20 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 1: DESKTOP ADMIN FORM + PAGINATED HISTORY LISTING + LIVE MOBILE PREVIEW */}
+        {/* TAB 1: ADMIN FORM FOR CREATION / EDITING WITH LIVE RIGHT-SIDE PREVIEW */}
         {activeTab === 'admin-manager' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-              {/* Left 8 Columns: Admin Form */}
-              <div className="xl:col-span-8 space-y-8" ref={formContainerRef}>
-                <section className="bg-white border border-slate-200 rounded-xl p-6">
+          <div className="space-y-6">
+            {/* 2-Column Responsive Form & Live Preview: Form (Left 7 cols) & Card Preview (Right 5 cols) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Admin Form */}
+              <div className="lg:col-span-7 space-y-6" ref={formContainerRef}>
+                <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
                   <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200">
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-900">
-                        {editingId
-                          ? `Edit Mobile Landing Section (${editingId}) — Click Save to Update`
-                          : 'Create Mobile Landing Page Section'}
-                      </h2>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {editingId
-                          ? 'Modifying any field or image below updates the existing record in MongoDB (event_db) when you click Save.'
-                          : 'Configure category (CME, GSI, Course / AHS, Conference), year, description, multiple images, and publish state.'}
-                      </p>
-                    </div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {editingId
+                        ? 'Edit Mobile Landing Page Section'
+                        : 'Create Mobile Landing Page Section'}
+                    </h2>
                     {editingId && (
                       <button
                         type="button"
@@ -608,12 +572,12 @@ export default function App() {
                   </div>
 
                   <form onSubmit={handleFormSubmit} className="space-y-6">
-                    {/* Category Selection (CME, GSI, ASI / Course, Conference) */}
+                    {/* Category Selection (CME, GSI, Course / AHS, Conference) */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-800 mb-2">
-                        1. Select Landing Page Category / Vertical (CME, GSI, Course / AHS, Conference)
+                        1. Select Category / Vertical
                       </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {LANDING_CATEGORIES.map((cat) => {
                           const isSelected = formCategory === cat.code;
                           return (
@@ -632,7 +596,7 @@ export default function App() {
                                   {cat.shortLabel}
                                 </span>
                                 <span
-                                  className={`text-[11px] font-mono ${
+                                  className={`text-[10px] font-mono ${
                                     isSelected ? 'text-emerald-300' : 'text-slate-400'
                                   }`}
                                 >
@@ -640,7 +604,7 @@ export default function App() {
                                 </span>
                               </div>
                               <p
-                                className={`text-[11px] mt-1 line-clamp-2 ${
+                                className={`text-[10px] mt-1 line-clamp-1 ${
                                   isSelected ? 'text-slate-300' : 'text-slate-500'
                                 }`}
                               >
@@ -654,7 +618,7 @@ export default function App() {
 
                     {/* Section Title & Event Year */}
                     <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
-                      <div className="sm:col-span-5">
+                      <div className="sm:col-span-4">
                         <label
                           htmlFor="section-title-input"
                           className="block text-xs font-semibold text-slate-800 mb-1.5"
@@ -668,14 +632,14 @@ export default function App() {
                           onChange={(e) => setFormTitle(e.target.value)}
                           placeholder={`e.g., ${
                             formCategory === 'AHS'
-                              ? 'Course / AHS Laparoscopic Fellowship Masterclass'
-                              : `${formCategory} Scientific Program & Registration`
+                              ? 'Course / AHS Laparoscopic Masterclass'
+                              : `${formCategory} Clinical Section`
                           }`}
                           className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900"
                         />
                       </div>
 
-                      <div>
+                      <div className="sm:col-span-2">
                         <label
                           htmlFor="section-year-select"
                           className="block text-xs font-semibold text-slate-800 mb-1.5"
@@ -703,7 +667,7 @@ export default function App() {
                         htmlFor="section-description-input"
                         className="block text-xs font-semibold text-slate-800 mb-1.5"
                       >
-                        3. Section Description (Displayed on Mobile Landing Page Card) *
+                        3. Section Description (Rendered on Mobile Card) *
                       </label>
                       <textarea
                         id="section-description-input"
@@ -711,42 +675,42 @@ export default function App() {
                         required
                         value={formDescription}
                         onChange={(e) => setFormDescription(e.target.value)}
-                        placeholder="Describe the medical conference section, CME accreditation credits, GSI/AHS course eligibility, or key clinical highlights..."
+                        placeholder="Describe the medical conference section, accreditation credits, course eligibility, or clinical highlights..."
                         className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900 leading-relaxed"
                       />
                     </div>
 
-                    {/* Optional Section Redirect URL Field (Opened in Mobile In-App Browser on Image Click) */}
+                    {/* Optional Section Redirect URL Field */}
                     <div>
                       <label
                         htmlFor="section-url-input"
                         className="block text-xs font-semibold text-slate-800 mb-1.5"
                       >
-                        4. Redirect URL (Optional — Opened in Mobile In-App Browser on Image Click)
+                        4. Redirect URL (Optional — In-App Browser Link)
                       </label>
                       <input
                         id="section-url-input"
                         type="url"
                         value={formUrl}
                         onChange={(e) => setFormUrl(e.target.value)}
-                        placeholder="Optional: https://events.globalhealthacademy.org/... (leave blank if no redirect link)"
+                        placeholder="Optional: https://events.globalhealthacademy.org/... (leave blank if no link)"
                         className="w-full px-3.5 py-2 text-sm font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900"
                       />
                       <p className="text-[11px] text-slate-500 mt-1">
-                        Optional. When provided, tapping the section image on the Mobile App Landing Page redirects to this link inside the In-App Browser.
+                        When provided, tapping the section banner on the mobile app opens this link in the in-app browser.
                       </p>
                     </div>
 
-                    {/* Multiple Image Upload + Blob Store Path Resolution */}
-                    <div className="space-y-4 pt-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    {/* Multiple Image Upload + Paths */}
+                    <div className="space-y-4 pt-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                         <label className="block text-xs font-semibold text-slate-800">
-                          5. Section Images (Multiple Images Supported per Vertical/Category)
+                          5. Section Images (Multiple Images Supported)
                         </label>
                         <span className="text-xs font-mono text-slate-500 tabular-nums">
                           {totalImagesInForm > 0
-                            ? `${totalImagesInForm} image(s) queued for ${formCategory}`
-                            : 'Default category image will be used if none uploaded'}
+                            ? `${totalImagesInForm} image(s) attached`
+                            : 'Default category banner used if none uploaded'}
                         </span>
                       </div>
 
@@ -754,16 +718,16 @@ export default function App() {
                         onClick={() => fileInputRef.current?.click()}
                         className="border border-dashed border-slate-300 hover:border-slate-900 bg-slate-50 rounded-lg p-4 cursor-pointer transition-colors flex items-center justify-between gap-4"
                       >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="p-2.5 bg-white border border-slate-200 rounded-lg shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 bg-white border border-slate-200 rounded-lg shrink-0">
                             <Upload className="w-4 h-4 text-slate-700" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-slate-900">
-                              Click to select one or multiple images (JPG, PNG, WebP)
+                              Upload one or multiple images (JPG, PNG, WebP)
                             </p>
                             <p className="text-[11px] text-slate-500 mt-0.5">
-                              You can select multiple files at once or click again to add more images to this {formCategory} section.
+                              Supports multiple banners with in-card swipe/carousel on mobile.
                             </p>
                           </div>
                         </div>
@@ -780,9 +744,9 @@ export default function App() {
                         />
                       </div>
 
-                      {/* Multi-Image Thumbnail Strip (Retained + Newly Added) */}
+                      {/* Multi-Image Thumbnail Strip */}
                       {(retainedImages.length > 0 || pendingUploads.length > 0) && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                           {retainedImages.map((img, idx) => (
                             <div
                               key={img.blobPath + idx}
@@ -798,16 +762,16 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveRetainedImage(img.blobPath)}
-                                title="Remove image from section"
+                                title="Remove image"
                                 className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/75 text-white hover:bg-red-600 transition-colors cursor-pointer"
                               >
                                 <X className="w-3 h-3" />
                               </button>
-                              <div className="p-2 text-[11px] font-mono">
+                              <div className="p-1.5 text-[10px] font-mono">
                                 <div className="text-slate-900 font-semibold truncate">
                                   #{idx + 1} {img.fileName}
                                 </div>
-                                <div className="text-emerald-700">Saved in Blob Store</div>
+                                <div className="text-emerald-700">Stored in Blob Store</div>
                               </div>
                             </div>
                           ))}
@@ -829,12 +793,12 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemovePendingUpload(up.id)}
-                                  title="Remove pending upload"
+                                  title="Remove upload"
                                   className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/75 text-white hover:bg-red-600 transition-colors cursor-pointer"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
-                                <div className="p-2 text-[11px] font-mono">
+                                <div className="p-1.5 text-[10px] font-mono">
                                   <div className="text-slate-900 font-semibold truncate">
                                     #{orderNum} {up.fileName}
                                   </div>
@@ -847,26 +811,9 @@ export default function App() {
                           })}
                         </div>
                       )}
-
-                      {/* Resolved Blob Store Paths Box */}
-                      <div className="p-3.5 bg-slate-100 rounded-lg text-[11px] font-mono text-slate-700 space-y-1.5">
-                        <div className="flex items-center justify-between text-slate-500">
-                          <span>
-                            Target Blob Store Paths (from {gatewayConfig?.blobStoreProperty || 'gha.blob-store.base-path'}):
-                          </span>
-                          <span>event_db.landing_sections.images[]</span>
-                        </div>
-                        <div className="space-y-1 max-h-28 overflow-y-auto">
-                          {plannedBlobPaths.map((p, idx) => (
-                            <div key={p + idx} className="text-slate-900 break-all font-medium">
-                              [{idx + 1}] {p}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     </div>
 
-                    {/* 5. Publish / Unpublish Control + Save Button */}
+                    {/* Publish Control + Form Actions */}
                     <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <button
@@ -884,16 +831,11 @@ export default function App() {
                             }`}
                           />
                         </button>
-                        <div>
-                          <span className="text-xs font-semibold text-slate-900 block">
-                            {formPublished
-                              ? `Publish State: PUBLISHED (Active ${formCategory} Card on App Landing Page)`
-                              : 'Publish State: UNPUBLISHED (Saved in History — Hidden from App)'}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            4-Card Rule: Publishing sets this as the active {formCategory} card and auto-unpublishes any previous {formCategory} card.
-                          </span>
-                        </div>
+                        <span className="text-xs font-semibold text-slate-900">
+                          {formPublished
+                            ? 'Publish State: Active (Published to Mobile App)'
+                            : 'Publish State: Inactive (Unpublished / Draft)'}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-2.5">
@@ -902,91 +844,48 @@ export default function App() {
                           onClick={() => resetForm()}
                           className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                         >
-                          Reset Form
+                          Reset
                         </button>
                         <button
                           type="submit"
                           disabled={submitting}
-                          className="px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                          className="px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 shadow-xs"
                         >
-                          {submitting ? 'Saving...' : 'Save'}
+                          {submitting ? 'Saving...' : editingId ? 'Update Section' : 'Save Section'}
                         </button>
                       </div>
                     </div>
                   </form>
                 </section>
-
-                {/* Compact Live SLF4J Debug Log Feed */}
-                <section className="bg-slate-950 text-slate-200 rounded-xl p-5 font-mono text-xs">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <Terminal className="w-4 h-4 text-emerald-400" />
-                      <span className="font-semibold text-white">
-                        GHA Event Service — Live Debug Log Stream (profile={gatewayConfig?.activeProfile || 'dev'})
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('java-code')}
-                      className="text-xs text-sky-400 hover:underline cursor-pointer"
-                    >
-                      Open Full Log Console &amp; Profiles →
-                    </button>
-                  </div>
-                  <div className="space-y-1 max-h-36 overflow-y-auto">
-                    {recentLogs.map((l) => (
-                      <div key={l.id} className="truncate">
-                        <span className="text-slate-500">{l.timestamp.slice(11, 23)}</span>{' '}
-                        <span className="text-sky-400">[{l.profile}]</span>{' '}
-                        <span className="text-slate-400">[{l.correlationId}]</span>{' '}
-                        <span
-                          className={
-                            l.level === 'ERROR'
-                              ? 'text-red-400'
-                              : l.level === 'WARN'
-                              ? 'text-amber-300'
-                              : l.level === 'INFO'
-                              ? 'text-emerald-400'
-                              : 'text-purple-300'
-                          }
-                        >
-                          {l.level}
-                        </span>{' '}
-                        <span>{l.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
               </div>
 
-              {/* Right 4 Columns: Live Mobile App Landing Page Simulator */}
-              <div className="xl:col-span-4 xl:sticky xl:top-24">
-                <MobileLandingPreview
-                  publishedSections={publishedSections}
-                  totalAdminCount={adminSections.length}
-                  loading={loading}
-                  onRefresh={fetchAllData}
-                  onSelectForEdit={handleSelectSectionForEdit}
+              {/* Right Column: PREVIEW ON RIGHT SIDE OF THE FORM (NOT BELOW) */}
+              <div className="lg:col-span-5">
+                <FormLiveCardPreview
+                  category={formCategory}
+                  eventYear={formEventYear}
+                  title={formTitle}
+                  description={formDescription}
+                  url={formUrl}
+                  published={formPublished}
+                  retainedImages={retainedImages}
+                  pendingUploads={pendingUploads}
                 />
               </div>
             </div>
-
-            {/* Full Paginated History Listing Page right below the Admin Form & Mobile Preview */}
-            <LandingRecordsListingPage
-              onEditRecord={handleSelectSectionForEdit}
-              onTogglePublish={handleTogglePublish}
-              onDeleteRecord={handleDeleteSection}
-              refreshTrigger={refreshTrigger}
-            />
           </div>
         )}
 
-        {/* TAB 2: DEDICATED HISTORY LISTING PAGE (10 PER PAGE + YEAR-WISE FILTER + VIEW/EDIT/DELETE) */}
+        {/* TAB 2: PRIMARY LANDING PAGE SECTIONS LISTING (DEFAULT PAGE) */}
         {activeTab === 'history-listing' && (
           <LandingRecordsListingPage
             onEditRecord={handleSelectSectionForEdit}
             onTogglePublish={handleTogglePublish}
             onDeleteRecord={handleDeleteSection}
+            onCreateClick={() => {
+              resetForm();
+              setActiveTab('admin-manager');
+            }}
             refreshTrigger={refreshTrigger}
           />
         )}
@@ -1020,7 +919,7 @@ export default function App() {
 
               <div className="border-t border-slate-200 pt-4">
                 <h3 className="text-xs font-semibold text-slate-700 mb-1">
-                  4-Card Rule &amp; Historical Re-Publish Matrix ({adminSections.length} Total in event_db)
+                  4-Card Rule &amp; Historical Re-Publish Matrix ({adminSections.length} Total in event.landing_sections)
                 </h3>
                 <p className="text-xs text-slate-500 mb-3">
                   At most 4 cards (1 per category: CME, GSI, Course / AHS, Conference) are live at any point. Pick any older unpublished record below and click <strong>Re-Publish</strong> to make it the active card for its category.
@@ -1064,6 +963,13 @@ export default function App() {
         {/* TAB 4: LOCAL STORAGE & MONGODB (event_db) INSPECTOR */}
         {activeTab === 'storage-db' && (
           <div className="space-y-6">
+            <LiveSeaweedS3Tester
+              refreshTrigger={refreshTrigger}
+              onUploadSuccess={(msg) => {
+                showToast('success', msg);
+                fetchAllData();
+              }}
+            />
             <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
               <h2 className="text-lg font-semibold text-slate-900">
                 How Local Storage Works (Local File System vs. SeaweedFS Container)
@@ -1108,7 +1014,7 @@ export default function App() {
                 <div className="flex items-center gap-2.5 mb-3">
                   <Database className="w-5 h-5 text-slate-800" />
                   <h2 className="text-base font-semibold text-slate-900">
-                    MongoDB Database: {gatewayConfig?.mongoDatabase || 'event_db'}
+                    MongoDB Database: {gatewayConfig?.mongoDatabase || 'event'} (Collection: landing_sections)
                   </h2>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed mb-4">
