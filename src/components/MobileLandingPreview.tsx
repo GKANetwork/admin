@@ -600,8 +600,8 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                           </>
                         )}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex items-end p-3 pointer-events-none">
-                          <div className="w-full flex items-center justify-between text-xs text-white/95">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-3 pointer-events-none">
+                          <div className="w-full flex items-center justify-between text-xs text-white/95 mb-1">
                             <span className="font-semibold tracking-wide inline-flex items-center gap-1.5">
                               <span>
                                 {section.category === 'AHS' ? 'Course / AHS' : section.category}
@@ -619,6 +619,9 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                               </span>
                             </span>
                           </div>
+                          <h4 className="text-xs font-bold text-white line-clamp-1 drop-shadow-sm">
+                            {section.title}
+                          </h4>
                         </div>
                       </div>
 

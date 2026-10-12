@@ -115,12 +115,12 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
           <div className="relative aspect-[16/9] bg-slate-900 overflow-hidden select-none">
             <ResilientSectionImage
               src={currentImage?.previewUrl}
-              alt={currentImage?.fileName || displayTitle}
+              alt={displayTitle}
               category={category}
             />
 
             {/* Category badge overlay */}
-            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-20">
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide shadow-xs ${categoryColorClass}`}>
                 {category === 'AHS' ? 'Course / AHS' : category}
               </span>
@@ -135,7 +135,7 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveImageIdx((prev) => (prev - 1 + totalImages) % totalImages)}
-                  className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-colors cursor-pointer z-10"
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-colors cursor-pointer z-20"
                   aria-label="Previous image"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
@@ -143,12 +143,12 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveImageIdx((prev) => (prev + 1) % totalImages)}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-colors cursor-pointer z-10"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-colors cursor-pointer z-20"
                   aria-label="Next image"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-                <div className="absolute bottom-2 right-2.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-mono flex items-center gap-1 z-10">
+                <div className="absolute bottom-2 right-2.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-mono flex items-center gap-1 z-20">
                   <Images className="w-2.5 h-2.5" />
                   <span>
                     {safeIdx + 1}/{totalImages}
@@ -159,19 +159,38 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
 
             {/* Redirect URL indicator chip */}
             {url.trim() && (
-              <div className="absolute bottom-2 left-2.5 px-1.5 py-0.5 rounded bg-emerald-600/90 text-white text-[9px] font-medium flex items-center gap-1 z-10 backdrop-blur-xs">
+              <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-emerald-600/90 text-white text-[9px] font-medium flex items-center gap-1 z-20 backdrop-blur-xs">
                 <Globe className="w-2.5 h-2.5" />
-                <span className="truncate max-w-[120px]">In-App Link</span>
+                <span className="truncate max-w-[100px]">Link</span>
               </div>
             )}
+
+            {/* Banner Overlay with Title and Details — ALWAYS visible when image is loaded */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent flex flex-col justify-end p-3 pointer-events-none z-10">
+              <h4 className="text-xs font-bold text-white leading-snug line-clamp-2 drop-shadow-md">
+                {displayTitle}
+              </h4>
+              <p className="text-[10px] text-slate-200 mt-0.5 line-clamp-2 leading-tight drop-shadow-sm">
+                {displayDesc}
+              </p>
+            </div>
           </div>
 
           {/* Card Body */}
-          <div className="p-3.5 space-y-2">
-            <h4 className="text-xs font-bold text-slate-900 leading-snug line-clamp-2">
+          <div className="p-3.5 space-y-2 bg-white">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+              <span className="font-semibold text-slate-800">{category}</span>
+              <span>·</span>
+              <span>Year {eventYear}</span>
+              <span>·</span>
+              <span className={published ? 'text-emerald-700 font-semibold' : 'text-slate-400'}>
+                {published ? 'Published' : 'Draft'}
+              </span>
+            </div>
+            <h4 className="text-xs font-bold text-slate-900 leading-snug">
               {displayTitle}
             </h4>
-            <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3">
+            <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-line">
               {displayDesc}
             </p>
 

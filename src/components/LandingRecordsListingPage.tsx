@@ -129,26 +129,8 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
   return (
     <div className="space-y-6">
-      {/* Heading & Action Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">
-          Mobile Landing Page Sections
-        </h2>
-
-        {onCreateClick && (
-          <button
-            type="button"
-            onClick={onCreateClick}
-            className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Mobile Landing Page</span>
-          </button>
-        )}
-      </div>
-
       {/* Paginated Records Table (10 records per page) */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
