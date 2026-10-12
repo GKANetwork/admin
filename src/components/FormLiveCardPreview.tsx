@@ -102,10 +102,6 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-500 leading-normal">
-        Real-time view of this section as it appears to doctors and attendees on the mobile app. Updates instantly as you type.
-      </p>
-
       {/* Phone Screen Mockup Container */}
       <div className="w-full max-w-[340px] mx-auto bg-slate-900 rounded-[2rem] p-3 shadow-xl border-4 border-slate-800">
         {/* Dynamic Island / Speaker notch */}

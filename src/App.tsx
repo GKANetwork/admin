@@ -373,13 +373,8 @@ export default function App() {
             }}
             className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap hover:opacity-80 transition-opacity"
           >
-            GHA Conference Admin
+            GHA Admin
           </a>
-          {!isStudio && (
-            <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
-              Local Mode
-            </span>
-          )}
         </div>
 
         {/* Zone 2: Navigation Links (Clean: Landing Page Sections + Admin Form locally; internal tabs preserved in AI Studio) */}
@@ -453,29 +448,8 @@ export default function App() {
           )}
         </nav>
 
-        {/* Zone 3: 2 primary actions (Copy Mac Sync Command + Create Mobile Landing Page) */}
+        {/* Zone 3: Primary action button */}
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleCopyMacSyncCommand}
-            disabled={copyingSyncCmd}
-            className="px-3.5 py-2 text-xs font-semibold text-emerald-950 bg-emerald-100 border border-emerald-300 rounded-lg hover:bg-emerald-200 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer"
-            title="Copies a terminal command to extract service/, ui/admin/, and ui/app/ directly into /Users/jayakumar/project/gha/mobile-app/code"
-          >
-            {copiedSyncCmd ? (
-              <Check className="w-3.5 h-3.5 text-emerald-800" />
-            ) : (
-              <Copy className="w-3.5 h-3.5 text-emerald-800" />
-            )}
-            <span>
-              {copiedSyncCmd
-                ? 'Copied!'
-                : copyingSyncCmd
-                ? 'Preparing...'
-                : 'Copy Mac Sync Command'}
-            </span>
-          </button>
-
           <button
             type="button"
             onClick={() => {
@@ -559,77 +533,7 @@ export default function App() {
 
       {/* Main Desktop Viewport (1440px Baseline Container) */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-8">
-        {/* Architecture, Active Spring Profile (dev/qa/prod) & Gateway Context Bar */}
-        <div className="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-5 border-b border-slate-200">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500 mb-1">
-              <span>Nginx Proxy</span>
-              <span aria-hidden="true">/</span>
-              <span>GHA Gateway (:8080)</span>
-              <span aria-hidden="true">/</span>
-              <span>GHA Event Service (:8082)</span>
-              <span aria-hidden="true">/</span>
-              <span className="text-slate-900 font-semibold">
-                MongoDB ({gatewayConfig?.mongoDatabase || 'event'}.{gatewayConfig?.mongoCollection || 'landing_sections'})
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="text-emerald-700 font-semibold">
-                {gatewayConfig?.blobProvider === 'local-fs'
-                  ? 'Local Disk Blob Store'
-                  : 'SeaweedFS Blob Store'}
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Mobile Landing Page Administration &amp; History
-            </h1>
-          </div>
 
-          {/* Interactive 3-Profile Selector (dev, qa, prod) + Summary Stats */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-1 p-1 bg-slate-200/80 rounded-lg">
-              {(['dev', 'qa', 'prod'] as const).map((prof) => {
-                const active = (gatewayConfig?.activeProfile || 'dev') === prof;
-                return (
-                  <button
-                    key={prof}
-                    type="button"
-                    onClick={() => handleSwitchProfile(prof)}
-                    className={`px-3 py-1 text-xs font-mono font-semibold rounded-md transition-colors cursor-pointer ${
-                      active
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {prof.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center gap-3 text-xs text-slate-600 font-mono tabular-nums">
-              <div>
-                <span className="text-slate-400">Published: </span>
-                <span className="font-semibold text-emerald-700">
-                  {publishedSections.length}
-                </span>
-              </div>
-              <span aria-hidden="true">·</span>
-              <div>
-                <span className="text-slate-400">Unpublished: </span>
-                <span className="font-semibold text-amber-700">
-                  {Math.max(0, adminSections.length - publishedSections.length)}
-                </span>
-              </div>
-              <span aria-hidden="true">·</span>
-              <div>
-                <span className="text-slate-400">Total: </span>
-                <span className="font-semibold text-slate-900">
-                  {adminSections.length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Toast Feedback Banner */}
         {feedbackBanner && (
@@ -655,7 +559,7 @@ export default function App() {
         {activeTab === 'admin-manager' && (
           <div className="space-y-6">
             {/* Top Navigation Back to Landing Sections Listing */}
-            <div className="flex items-center justify-between pb-2">
+            <div className="pb-2">
               <button
                 type="button"
                 onClick={() => {
@@ -667,25 +571,7 @@ export default function App() {
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Landing Page Sections</span>
               </button>
-
-              <div className="text-xs font-mono text-slate-500">
-                Target Collection:{' '}
-                <span className="font-semibold text-slate-900">
-                  {gatewayConfig?.mongoDatabase || 'event'}.{gatewayConfig?.mongoCollection || 'landing_sections'}
-                </span>
-              </div>
             </div>
-
-            {/* Seaweed S3 Diagnostics (Studio only) */}
-            {isStudio && (
-              <LiveSeaweedS3Tester
-                refreshTrigger={refreshTrigger}
-                onUploadSuccess={(msg) => {
-                  showToast('success', msg);
-                  fetchAllData();
-                }}
-              />
-            )}
 
             {/* 2-Column Responsive Form & Live Preview: Form (Left 7 cols) & Card Preview (Right 5 cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -693,18 +579,11 @@ export default function App() {
               <div className="lg:col-span-7 space-y-6" ref={formContainerRef}>
                 <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
                   <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200">
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-900">
-                        {editingId
-                          ? `Edit Mobile Landing Section (${editingId})`
-                          : 'Create Mobile Landing Page Section'}
-                      </h2>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {editingId
-                          ? 'Modifying any field or image updates the record in MongoDB (event.landing_sections) when you click Save.'
-                          : 'Configure category, event year, description, multiple images, optional URL, and publish state.'}
-                      </p>
-                    </div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {editingId
+                        ? 'Edit Mobile Landing Page Section'
+                        : 'Create Mobile Landing Page Section'}
+                    </h2>
                     {editingId && (
                       <button
                         type="button"
@@ -957,21 +836,6 @@ export default function App() {
                           })}
                         </div>
                       )}
-
-                      {/* Stored Blob Paths info */}
-                      <div className="p-3 bg-slate-100 rounded-lg text-[11px] font-mono text-slate-700 space-y-1">
-                        <div className="flex items-center justify-between text-slate-500">
-                          <span>Target Storage:</span>
-                          <span>event.landing_sections.images[]</span>
-                        </div>
-                        <div className="space-y-0.5 max-h-24 overflow-y-auto text-slate-900 font-medium">
-                          {plannedBlobPaths.map((p, idx) => (
-                            <div key={p + idx} className="truncate">
-                              [{idx + 1}] {p}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Publish Control + Form Actions */}
@@ -992,16 +856,11 @@ export default function App() {
                             }`}
                           />
                         </button>
-                        <div>
-                          <span className="text-xs font-semibold text-slate-900 block">
-                            {formPublished
-                              ? `Publish State: PUBLISHED (Live ${formCategory} Card on Mobile App)`
-                              : 'Publish State: UNPUBLISHED (Saved to History — Hidden from Mobile App)'}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            4-Card Rule: Publishing sets this as active card for {formCategory} (auto-unpublishes older {formCategory} cards).
-                          </span>
-                        </div>
+                        <span className="text-xs font-semibold text-slate-900">
+                          {formPublished
+                            ? 'Publish State: Active (Published to Mobile App)'
+                            : 'Publish State: Inactive (Unpublished / Draft)'}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-2.5">
@@ -1023,50 +882,6 @@ export default function App() {
                     </div>
                   </form>
                 </section>
-
-                {/* Debug log feed only in AI Studio */}
-                {isStudio && (
-                  <section className="bg-slate-950 text-slate-200 rounded-xl p-5 font-mono text-xs">
-                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
-                      <div className="flex items-center gap-2">
-                        <Terminal className="w-4 h-4 text-emerald-400" />
-                        <span className="font-semibold text-white">
-                          GHA Event Service Debug Logs (profile={gatewayConfig?.activeProfile || 'dev'})
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('java-code')}
-                        className="text-xs text-sky-400 hover:underline cursor-pointer"
-                      >
-                        Profiles &amp; Full Logs →
-                      </button>
-                    </div>
-                    <div className="space-y-1 max-h-28 overflow-y-auto">
-                      {recentLogs.map((l) => (
-                        <div key={l.id} className="truncate">
-                          <span className="text-slate-500">{l.timestamp.slice(11, 23)}</span>{' '}
-                          <span className="text-sky-400">[{l.profile}]</span>{' '}
-                          <span className="text-slate-400">[{l.correlationId}]</span>{' '}
-                          <span
-                            className={
-                              l.level === 'ERROR'
-                                ? 'text-red-400'
-                                : l.level === 'WARN'
-                                ? 'text-amber-300'
-                                : l.level === 'INFO'
-                                ? 'text-emerald-400'
-                                : 'text-purple-300'
-                            }
-                          >
-                            {l.level}
-                          </span>{' '}
-                          <span>{l.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
               </div>
 
               {/* Right Column: PREVIEW ON RIGHT SIDE OF THE FORM (NOT BELOW) */}

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LandingCategory } from '../types/gha';
 
 interface ResilientSectionImageProps {
-  src: string;
+  src?: string;
   alt: string;
   category: LandingCategory;
   className?: string;

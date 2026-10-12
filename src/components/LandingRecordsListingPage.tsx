@@ -20,6 +20,7 @@ import {
   Calendar,
   Images,
   ExternalLink,
+  Plus,
 } from 'lucide-react';
 
 interface LandingRecordsListingPageProps {
@@ -128,125 +129,22 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
   return (
     <div className="space-y-6">
-      {/* Filter & Year-Wise Selection Header */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-200">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Mobile Landing Page Sections Listing
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Paginated 10 records per page (sorted by <code className="font-mono">event_year DESC, updated_at DESC</code>). Enforces max 4 live cards (1 per category) with 1-click <strong>Re-Publish</strong> on any historical record.
-            </p>
-          </div>
+      {/* Heading & Action Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">
+          Mobile Landing Page Sections
+        </h2>
 
-          {/* Top Actions: Create Mobile Landing Page + Year-Wise Filter */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {onCreateClick && (
-              <button
-                type="button"
-                onClick={onCreateClick}
-                className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <span>+ Create Mobile Landing Page</span>
-              </button>
-            )}
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-600 mr-1 inline-flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                <span>Filter by Year:</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => handleYearChange(undefined)}
-                className={`px-3 py-1.5 text-xs font-mono font-semibold rounded-lg transition-colors cursor-pointer ${
-                  selectedYear === undefined
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                All Years
-              </button>
-              {pageData.availableYears.map((yr) => (
-                <button
-                  key={yr}
-                  type="button"
-                  onClick={() => handleYearChange(yr)}
-                  className={`px-3 py-1.5 text-xs font-mono font-semibold rounded-lg transition-colors tabular-nums cursor-pointer ${
-                    selectedYear === yr
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {yr}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Secondary Filter Bar: Category + Publish State + Search */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Category Filter */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg overflow-x-auto">
-            {(['ALL', 'CME', 'GSI', 'AHS', 'Conference'] as const).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => handleCategoryFilterChange(cat)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                  categoryFilter === cat
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {cat === 'ALL' ? 'All Categories' : cat === 'AHS' ? 'Course / AHS' : cat}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Published / Unpublished History Filter */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
-              {(
-                [
-                  ['ALL', 'All History'],
-                  ['PUBLISHED', 'Published'],
-                  ['UNPUBLISHED', 'Unpublished'],
-                ] as const
-              ).map(([stateKey, label]) => (
-                <button
-                  key={stateKey}
-                  type="button"
-                  onClick={() => handlePublishFilterChange(stateKey)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                    publishFilter === stateKey
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input */}
-            <div className="relative min-w-[220px] flex-1 sm:flex-initial">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(0);
-                }}
-                placeholder="Search title, description, year..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900"
-              />
-            </div>
-          </div>
-        </div>
+        {onCreateClick && (
+          <button
+            type="button"
+            onClick={onCreateClick}
+            className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Mobile Landing Page</span>
+          </button>
+        )}
       </div>
 
       {/* Paginated Records Table (10 records per page) */}
