@@ -105,7 +105,7 @@ public class LandingSectionServiceImpl implements LandingSectionServicePort {
                                 .updatedAt(now)
                                 .build(),
                         LandingSectionDocument.builder()
-                                .category(LandingCategory.Conference)
+                                .category(LandingCategory.CONFERENCE)
                                 .eventYear(2026)
                                 .title("GHA Annual International Medical Congress & Scientific Exhibition 2026")
                                 .description("Four-day plenary sessions, international keynote lectures, peer-reviewed abstract poster halls, and multi-specialty clinical workshops.")

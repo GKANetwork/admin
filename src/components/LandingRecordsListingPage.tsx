@@ -142,9 +142,14 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
       return;
     }
 
+    const isSameCategory = (a?: string, b?: string): boolean => {
+      if (!a || !b) return false;
+      return a.trim().toUpperCase() === b.trim().toUpperCase();
+    };
+
     // Publishing an unpublished card: validate 4-card rule
     const existingPublishedForVertical = publishedSections.find(
-      (p) => p.category === record.category && p.id !== record.id
+      (p) => isSameCategory(p.category, record.category) && p.id !== record.id
     );
 
     if (existingPublishedForVertical) {
@@ -177,12 +182,26 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     await loadPaginatedData();
   };
 
+  const isSameCat = (a?: string, b?: string): boolean => {
+    if (!a || !b) return false;
+    return a.trim().toUpperCase() === b.trim().toUpperCase();
+  };
+
+  const normalizeCat = (cat?: string): LandingCategory => {
+    if (!cat) return 'CME';
+    const upper = cat.trim().toUpperCase();
+    if (upper === 'CONFERENCE') return 'Conference';
+    if (upper === 'ASI' || upper === 'AHS') return 'AHS';
+    return upper as LandingCategory;
+  };
+
   const getPublishedForVertical = (cat: LandingCategory): LandingSectionRecord | undefined => {
-    return publishedSections.find((p) => p.category === cat);
+    return publishedSections.find((p) => isSameCat(p.category, cat));
   };
 
   const formatCategoryName = (cat: LandingCategory): string => {
-    return cat === 'AHS' ? 'Course / AHS' : cat;
+    const normalized = normalizeCat(cat);
+    return normalized === 'AHS' ? 'Course / AHS' : normalized;
   };
 
   const startRecordNum =
@@ -925,7 +944,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                         ALL ({publishedSections.length})
                       </button>
                       {VERTICAL_SLOTS.map((catKey) => {
-                        const hasPublished = publishedSections.some((p) => p.category === catKey);
+                        const hasPublished = publishedSections.some((p) => isSameCat(p.category, catKey));
                         return (
                           <button
                             key={catKey}
@@ -950,7 +969,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                       {publishedSections
                         .filter(
                           (sec) =>
-                            previewFocusedCategory === 'ALL' || sec.category === previewFocusedCategory
+                            previewFocusedCategory === 'ALL' || isSameCat(sec.category, previewFocusedCategory)
                         )
                         .map((section) => {
                           const imgs =

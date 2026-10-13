@@ -585,9 +585,9 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
   }
 
   private normalizeDoc(doc: Partial<LandingSectionDocument> & { id: string }): LandingSectionDocument {
-    const rawCat = String(doc.category || 'CME');
+    const rawCat = String(doc.category || 'CME').toUpperCase();
     const category: LandingCategory =
-      rawCat === 'ASI' ? 'AHS' : (rawCat as LandingCategory) || 'CME';
+      rawCat === 'CONFERENCE' ? 'Conference' : (rawCat === 'ASI' || rawCat === 'AHS' ? 'AHS' : (doc.category as LandingCategory) || 'CME');
     const eventYear = Number(doc.eventYear) || 2026;
     const images: SectionImageAsset[] =
       Array.isArray(doc.images) && doc.images.length > 0
@@ -1366,12 +1366,27 @@ async function startServer() {
   app.use('/api/v1/events/landing-sections', async (req: Request, res: Response, next) => {
     const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-proxy';
     const activeCfg = blobStorage.getActiveProfileConfig();
-    const targetUrl = `${UPSTREAM_EVENT_SERVICE}${req.originalUrl}`;
+    // Normalize target URL (e.g. ?category=Conference -> ?category=CONFERENCE)
+    let sanitizedOriginalUrl = req.originalUrl.replace(/category=Conference\b/gi, 'category=CONFERENCE');
+    const targetUrl = `${UPSTREAM_EVENT_SERVICE}${sanitizedOriginalUrl}`;
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
       const isBodyMethod = ['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase());
+
+      // Normalize category in outgoing JSON payload so Spring Boot's Java enum deserialization succeeds immediately
+      let forwardedBody: any = req.body;
+      if (isBodyMethod && forwardedBody && typeof forwardedBody === 'object') {
+        forwardedBody = { ...forwardedBody };
+        if (forwardedBody.category && typeof forwardedBody.category === 'string') {
+          const upper = forwardedBody.category.trim().toUpperCase();
+          if (upper === 'CONFERENCE') forwardedBody.category = 'CONFERENCE';
+          else if (upper === 'CME') forwardedBody.category = 'CME';
+          else if (upper === 'GSI') forwardedBody.category = 'GSI';
+          else if (upper === 'AHS' || upper === 'ASI' || upper === 'COURSE') forwardedBody.category = 'AHS';
+        }
+      }
 
       const upstreamRes = await fetch(targetUrl, {
         method: req.method,
@@ -1380,7 +1395,7 @@ async function startServer() {
           Accept: 'application/json',
           'X-Correlation-Id': corrId,
         },
-        body: isBodyMethod ? JSON.stringify(req.body ?? {}) : undefined,
+        body: isBodyMethod ? JSON.stringify(forwardedBody ?? {}) : undefined,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);

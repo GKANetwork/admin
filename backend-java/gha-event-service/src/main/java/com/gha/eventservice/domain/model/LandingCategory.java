@@ -1,5 +1,7 @@
 package com.gha.eventservice.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 /**
  * Supported Mobile App Landing Page Categories for GHA Medical Platform.
  * CME: Continuing Medical Education
@@ -27,5 +29,23 @@ public enum LandingCategory {
 
     public String getLabel() {
         return label;
+    }
+
+    @JsonCreator
+    public static LandingCategory fromString(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase();
+        for (LandingCategory cat : values()) {
+            if (cat.name().equalsIgnoreCase(normalized) || cat.code.equalsIgnoreCase(value.trim())) {
+                return cat;
+            }
+        }
+        if (normalized.contains("CONFERENCE")) return CONFERENCE;
+        if (normalized.contains("CME")) return CME;
+        if (normalized.contains("GSI")) return GSI;
+        if (normalized.contains("AHS") || normalized.contains("COURSE") || normalized.contains("ASI")) return AHS;
+        throw new IllegalArgumentException("Unknown LandingCategory: " + value + ". Expected one of: [CME, CONFERENCE, GSI, AHS]");
     }
 }

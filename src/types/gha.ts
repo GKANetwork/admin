@@ -1,4 +1,4 @@
-export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference';
+export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'CONFERENCE';
 export type GhaProfile = 'dev' | 'qa' | 'prod';
 export type BlobProviderType = 'local-fs' | 'seaweedfs';
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
