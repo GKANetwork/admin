@@ -41,11 +41,16 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
   const [browserReloadCount, setBrowserReloadCount] = useState<number>(0);
   const [carouselIndices, setCarouselIndices] = useState<Record<string, number>>({});
 
+  const isSameCat = (a?: string, b?: string): boolean => {
+    if (!a || !b) return false;
+    return a.trim().toUpperCase() === b.trim().toUpperCase();
+  };
+
   // Strict guarantee: only records with published === true appear in the Mobile App Landing Page
   const visibleSections = publishedSections.filter(
     (item) =>
-      item.published === true &&
-      (selectedCategory === 'ALL' || item.category === selectedCategory)
+      Boolean(item.published) &&
+      (selectedCategory === 'ALL' || isSameCat(item.category, selectedCategory))
   );
 
   const hiddenDraftCount = Math.max(0, totalAdminCount - publishedSections.length);

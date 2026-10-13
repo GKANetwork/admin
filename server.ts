@@ -670,6 +670,17 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
         }
       }
     }
+    // RESTART GUARANTEE: Ensure every one of the 4 clinical verticals has an active published card
+    const requiredCats: LandingCategory[] = ['CME', 'GSI', 'AHS', 'Conference'];
+    for (const req of requiredCats) {
+      const hasPub = sorted.some((d) => d.published && String(d.category || '').toUpperCase() === req.toUpperCase());
+      if (!hasPub) {
+        const latestInCat = sorted.find((d) => String(d.category || '').toUpperCase() === req.toUpperCase());
+        if (latestInCat) {
+          latestInCat.published = true;
+        }
+      }
+    }
   }
 
   private loadOrSeed(blobStorage: BlobStoragePort) {
@@ -1193,6 +1204,19 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
       if (!seen.has(normCat)) {
         seen.add(normCat);
         result.push(doc);
+      }
+    }
+    // Fallback: If any of the 4 vertical categories has no active published card, pick its latest record
+    const allVerticals = ['CME', 'GSI', 'AHS', 'Conference'];
+    for (const v of allVerticals) {
+      if (!category || String(category).toUpperCase() === v.toUpperCase()) {
+        const hasV = result.some((r) => String(r.category || '').toUpperCase() === v.toUpperCase());
+        if (!hasV) {
+          const fallbackDoc = all.find((r) => String(r.category || '').toUpperCase() === v.toUpperCase());
+          if (fallbackDoc) {
+            result.push({ ...fallbackDoc, published: true });
+          }
+        }
       }
     }
     return result.sort((a, b) => (slotOrder[a.category] || 99) - (slotOrder[b.category] || 99));

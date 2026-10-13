@@ -136,9 +136,32 @@ export default function App() {
         gatewayClient.getPublishedMobileSections(),
         gatewayClient.getDebugLogs(),
       ]);
+      // Reconcile and guarantee all 4 verticals (CME, GSI, AHS, Conference) have an active card
+      const pubMap = new Map<string, LandingSectionRecord>();
+      (pubOnly || []).forEach((p) => {
+        const k = (p.category || '').trim().toUpperCase();
+        if (k) pubMap.set(k, p);
+      });
+      ['CME', 'GSI', 'AHS', 'CONFERENCE'].forEach((catKey) => {
+        if (!pubMap.has(catKey)) {
+          const match = (allAdmin || []).find(
+            (a) => (a.category || '').trim().toUpperCase() === catKey
+          );
+          if (match) {
+            pubMap.set(catKey, { ...match, published: true });
+          }
+        }
+      });
+      const slotOrder: Record<string, number> = { CME: 1, GSI: 2, AHS: 3, CONFERENCE: 4 };
+      const reconciledPub = Array.from(pubMap.values()).sort(
+        (a, b) =>
+          (slotOrder[(a.category || '').toUpperCase()] || 99) -
+          (slotOrder[(b.category || '').toUpperCase()] || 99)
+      );
+
       setGatewayConfig(cfg);
       setAdminSections(allAdmin);
-      setPublishedSections(pubOnly);
+      setPublishedSections(reconciledPub);
       setRecentLogs(logsData.slice(0, 10));
       setRefreshTrigger((prev) => prev + 1);
     } catch (err) {

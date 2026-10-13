@@ -140,6 +140,37 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
           }
         }
       });
+      // Safety guarantee: If any of the 4 clinical verticals is not yet in reconciledMap,
+      // fallback to any available record in response.content for that category
+      const verticalKeys = ['CME', 'GSI', 'AHS', 'CONFERENCE'];
+      verticalKeys.forEach((catKey) => {
+        if (!reconciledMap.has(catKey)) {
+          const match = (response.content || []).find(
+            (rec) => (rec.category || '').trim().toUpperCase() === catKey
+          );
+          if (match) {
+            reconciledMap.set(catKey, match);
+          }
+        }
+      });
+      // If still missing (e.g. Conference is on another page), fetch from all admin sections
+      if (verticalKeys.some((k) => !reconciledMap.has(k))) {
+        try {
+          const allAdmin = await gatewayClient.getAllAdminSections();
+          verticalKeys.forEach((catKey) => {
+            if (!reconciledMap.has(catKey)) {
+              const match = (allAdmin || []).find(
+                (rec) => (rec.category || '').trim().toUpperCase() === catKey
+              );
+              if (match) {
+                reconciledMap.set(catKey, match);
+              }
+            }
+          });
+        } catch {
+          // ignore
+        }
+      }
       const slotOrder: Record<string, number> = { CME: 1, GSI: 2, AHS: 3, CONFERENCE: 4 };
       const reconciledPublished = Array.from(reconciledMap.values()).sort(
         (a, b) => (slotOrder[a.category.toUpperCase()] || 99) - (slotOrder[b.category.toUpperCase()] || 99)
@@ -234,7 +265,11 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
   const getPublishedForVertical = (cat: LandingCategory): LandingSectionRecord | undefined => {
     const fromPub = publishedSections.find((p) => isSameCat(p.category, cat));
     if (fromPub) return fromPub;
-    return pageData.content.find((r) => r.published && isSameCat(r.category, cat));
+    const fromPagePub = pageData.content.find((r) => r.published && isSameCat(r.category, cat));
+    if (fromPagePub) return fromPagePub;
+    const fromPage = pageData.content.find((r) => isSameCat(r.category, cat));
+    if (fromPage) return fromPage;
+    return undefined;
   };
 
   const formatCategoryName = (cat: LandingCategory): string => {
@@ -1080,12 +1115,12 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
                     {/* Scrollable Feed of 4 Published Cards */}
                     <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
-                      {publishedSections
-                        .filter(
-                          (sec) =>
-                            previewFocusedCategory === 'ALL' || isSameCat(sec.category, previewFocusedCategory)
-                        )
-                        .map((section) => {
+                      {VERTICAL_SLOTS.filter(
+                        (catKey) =>
+                          previewFocusedCategory === 'ALL' || isSameCat(catKey, previewFocusedCategory)
+                      ).map((catKey) => {
+                        const section = getPublishedForVertical(catKey);
+                        if (!section) return null;
                           const imgs =
                             section.images && section.images.length > 0
                               ? section.images
