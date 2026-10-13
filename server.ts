@@ -2310,17 +2310,32 @@ async function startServer() {
     res.json(loaded);
   });
 
-  if (process.env.NODE_ENV !== 'production') {
+  const distPath = path.join(process.cwd(), 'dist');
+  const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
+
+  if (process.env.NODE_ENV !== 'production' || !distIndexExists) {
+    if (process.env.NODE_ENV === 'production' && !distIndexExists) {
+      logger.log(
+        'dev',
+        'gha-boot',
+        'WARN',
+        'c.g.e.GhaEventServiceApplication',
+        'Production mode active but dist/index.html was not found. Automatically falling back to Vite live development middleware.'
+      );
+    }
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.join(distPath, 'index.html'), (err) => {
+        if (err && !res.headersSent) {
+          res.status(500).send('Admin UI build not found. Run "npm run build" to build dist, or run "npm run dev".');
+        }
+      });
     });
   }
 
