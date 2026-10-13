@@ -659,12 +659,14 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
       if (b.eventYear !== a.eventYear) return b.eventYear - a.eventYear;
       return b.updatedAt.localeCompare(a.updatedAt);
     });
+    let publishedCount = 0;
     for (const doc of sorted) {
       if (doc.published) {
-        if (seenPublishedCategories.has(doc.category)) {
+        if (seenPublishedCategories.has(doc.category) || publishedCount >= 4) {
           doc.published = false;
         } else {
           seenPublishedCategories.add(doc.category);
+          publishedCount++;
         }
       }
     }
@@ -1097,9 +1099,24 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
   }
 
   findAll(): LandingSectionDocument[] {
+    const slotOrder: Record<LandingCategory, number> = {
+      CME: 1,
+      GSI: 2,
+      AHS: 3,
+      Conference: 4,
+    };
     return [...this.documents]
       .map((d) => this.normalizeDoc(d))
       .sort((a, b) => {
+        // Priority 1: Published records (the active vertical cards) ALWAYS appear at top
+        if (a.published !== b.published) {
+          return a.published ? -1 : 1;
+        }
+        // Priority 2: When both are published, order in canonical 4-vertical sequence (CME, GSI, AHS, Conference)
+        if (a.published && b.published) {
+          return (slotOrder[a.category] || 99) - (slotOrder[b.category] || 99);
+        }
+        // Priority 3: When both are unpublished, newest eventYear first, then updatedAt DESC
         if (b.eventYear !== a.eventYear) return b.eventYear - a.eventYear;
         return b.updatedAt.localeCompare(a.updatedAt);
       });
@@ -1215,6 +1232,7 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
     } else {
       this.documents.push(normalized);
     }
+    this.enforceMaxOnePublishedPerCategory();
     this.persist();
     return normalized;
   }
