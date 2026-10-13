@@ -31,6 +31,7 @@ import {
   ArrowLeft,
   LayoutList,
   Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 
 // When running locally on Mac (localhost / 127.0.0.1 / custom domain), only Landing Listing & AdminForm are shown.
@@ -76,7 +77,15 @@ export default function App() {
 
   // Admin Form State (Supports MULTIPLE images per vertical/category + Event Year + Optional Redirect URL)
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formCategory, setFormCategory] = useState<LandingCategory>('CME');
+  const [formCategory, setFormCategory] = useState<LandingCategory>(() => {
+    try {
+      const stored = localStorage.getItem('gha_last_category');
+      if (stored && ['CME', 'GSI', 'AHS', 'Conference', 'CONFERENCE'].includes(stored)) {
+        return (stored.toUpperCase() === 'CONFERENCE' ? 'Conference' : stored) as LandingCategory;
+      }
+    } catch {}
+    return 'Conference';
+  });
   const [formEventYear, setFormEventYear] = useState<number>(2026);
   const [formTitle, setFormTitle] = useState<string>('');
   const [formDescription, setFormDescription] = useState<string>('');
@@ -170,7 +179,11 @@ export default function App() {
       // fallback to passed section
     }
     setEditingId(latest.id);
-    setFormCategory(latest.category);
+    const cleanCat = latest.category.toUpperCase() === 'CONFERENCE' ? 'Conference' : (latest.category as LandingCategory);
+    setFormCategory(cleanCat);
+    try {
+      localStorage.setItem('gha_last_category', cleanCat);
+    } catch {}
     setFormEventYear(latest.eventYear || 2026);
     setFormTitle(latest.title);
     setFormDescription(latest.description);
@@ -310,6 +323,9 @@ export default function App() {
       setRetainedImages([]);
       setPendingUploads([]);
       setFormCategory(savedCategory);
+      try {
+        localStorage.setItem('gha_last_category', savedCategory);
+      } catch {}
 
       // Return immediately to the listing page as requested
       setActiveTab('history-listing');
@@ -560,23 +576,37 @@ export default function App() {
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-8">
 
 
-        {/* Toast Feedback Banner */}
+        {/* Floating Toast Notification (Persistent Viewport Presence · Never Hidden by Vertical Scroll) */}
         {feedbackBanner && (
-          <div
-            className={`mb-6 px-4 py-3 rounded-lg border text-sm flex items-center justify-between ${
-              feedbackBanner.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : 'bg-red-50 border-red-200 text-red-900'
-            }`}
-          >
-            <span>{feedbackBanner.message}</span>
-            <button
-              type="button"
-              onClick={() => setFeedbackBanner(null)}
-              className="text-xs font-mono underline ml-4 cursor-pointer"
+          <div className="fixed top-20 right-6 z-50 max-w-md w-full animate-in slide-in-from-top-2 duration-300 drop-shadow-2xl">
+            <div
+              className={`p-4 rounded-xl border-2 shadow-2xl flex items-start justify-between gap-3 backdrop-blur-md ${
+                feedbackBanner.type === 'success'
+                  ? 'bg-slate-900/95 text-white border-emerald-500'
+                  : 'bg-red-950/95 text-white border-red-500'
+              }`}
             >
-              Dismiss
-            </button>
+              <div className="flex items-start gap-3">
+                <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                </span>
+                <div>
+                  <div className="text-[11px] font-black font-mono uppercase tracking-wider text-emerald-400">
+                    Live Notification
+                  </div>
+                  <p className="text-xs font-semibold text-slate-100 mt-0.5 leading-snug">
+                    {feedbackBanner.message}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFeedbackBanner(null)}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
