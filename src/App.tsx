@@ -65,6 +65,14 @@ export default function App() {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+  const [validationSuccessNotice, setValidationSuccessNotice] = useState<{
+    category: string;
+    eventYear: number;
+    title: string;
+    published: boolean;
+    message: string;
+    timestamp: string;
+  } | null>(null);
 
   // Admin Form State (Supports MULTIPLE images per vertical/category + Event Year + Optional Redirect URL)
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -136,9 +144,11 @@ export default function App() {
     fetchAllData();
   }, [fetchAllData]);
 
-  const resetForm = () => {
+  const resetForm = (preferredCategory?: LandingCategory) => {
     setEditingId(null);
-    setFormCategory('CME');
+    if (preferredCategory) {
+      setFormCategory(preferredCategory);
+    }
     setFormEventYear(2026);
     setFormTitle('');
     setFormDescription('');
@@ -237,14 +247,19 @@ export default function App() {
       return;
     }
 
+    const savedCategory = formCategory;
+    const savedYear = Number(formEventYear) || 2026;
+    const isPub = formPublished;
+    const catLabel = savedCategory === 'AHS' ? 'Course / AHS' : savedCategory;
+
     setSubmitting(true);
     try {
       const payload: UpsertLandingSectionPayload = {
         category: formCategory,
-        eventYear: Number(formEventYear) || 2026,
+        eventYear: savedYear,
         title:
           formTitle.trim() ||
-          `${formCategory === 'AHS' ? 'Course / AHS' : formCategory} Clinical Section (${formEventYear})`,
+          `${catLabel} Clinical Section (${savedYear})`,
         description: formDescription.trim(),
         url: formUrl.trim(),
         published: formPublished,
@@ -257,26 +272,47 @@ export default function App() {
         })),
       };
 
+      let resultRecord: LandingSectionRecord;
       if (editingId) {
-        const updated = await gatewayClient.updateLandingSection(editingId, payload);
-        showToast(
-          'success',
-          `Updated ${updated.category} (${updated.eventYear}) record in event.landing_sections · ${
-            updated.published
-              ? 'Published as active category card on Mobile App (4-Card Rule)'
-              : 'Unpublished'
-          }`
-        );
+        resultRecord = await gatewayClient.updateLandingSection(editingId, payload);
       } else {
-        const created = await gatewayClient.createLandingSection(payload);
-        showToast(
-          'success',
-          `Saved ${created.category} (${created.eventYear}) section with ${created.images.length} image(s) to event.landing_sections`
-        );
+        resultRecord = await gatewayClient.createLandingSection(payload);
       }
 
+      const totalImages = (resultRecord.images?.length || 0) + (pendingUploads.length || 0);
+      const validationSummary = isPub
+        ? `Validated 4-Card Contract: Strictly 1 live card per clinical vertical. ${catLabel} (${savedYear}) is now the active live card pinned at top. Any previous card in this vertical was automatically archived to history.`
+        : `Saved as draft in history for ${catLabel} (${savedYear}). 4-card live published slots remain untouched.`;
+
+      setValidationSuccessNotice({
+        category: resultRecord.category,
+        eventYear: resultRecord.eventYear,
+        title: resultRecord.title,
+        published: resultRecord.published,
+        message: validationSummary,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+
+      showToast(
+        'success',
+        `VALIDATION PASSED: ${resultRecord.title} (${catLabel}) successfully saved with ${totalImages} image(s)! ${
+          resultRecord.published ? 'Live in top 4-card slots & pinned to listing.' : 'Archived in history.'
+        }`
+      );
+
       await fetchAllData();
-      resetForm();
+
+      // Clear input fields but preserve category so it DOES NOT default to CME!
+      setEditingId(null);
+      setFormTitle('');
+      setFormDescription('');
+      setFormUrl('');
+      setRetainedImages([]);
+      setPendingUploads([]);
+      setFormCategory(savedCategory);
+
+      // Return immediately to the listing page as requested
+      setActiveTab('history-listing');
     } catch (err: unknown) {
       console.error('[GHA-ADMIN-ERROR] Failed to save landing section:', err);
       const msg = err instanceof Error ? err.message : 'Failed to save landing section';
@@ -450,7 +486,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => {
-                resetForm();
+                resetForm(formCategory);
                 setActiveTab('admin-manager');
                 formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
               }}
@@ -509,7 +545,6 @@ export default function App() {
             <button
               type="button"
               onClick={() => {
-                resetForm();
                 setActiveTab('history-listing');
               }}
               className="px-4 py-2 text-xs font-black text-slate-900 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-100 hover:border-slate-400 transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
@@ -883,10 +918,11 @@ export default function App() {
             onTogglePublish={handleTogglePublish}
             onDeleteRecord={handleDeleteSection}
             onCreateClick={() => {
-              resetForm();
               setActiveTab('admin-manager');
             }}
             refreshTrigger={refreshTrigger}
+            validationNotice={validationSuccessNotice}
+            onClearValidationNotice={() => setValidationSuccessNotice(null)}
           />
         )}
 

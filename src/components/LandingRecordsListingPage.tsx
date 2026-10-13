@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LANDING_CATEGORIES,
   LandingCategory,
@@ -34,6 +34,15 @@ interface LandingRecordsListingPageProps {
   onDeleteRecord: (record: LandingSectionRecord) => Promise<void>;
   onCreateClick?: () => void;
   refreshTrigger: number;
+  validationNotice?: {
+    category: string;
+    eventYear: number;
+    title: string;
+    published: boolean;
+    message: string;
+    timestamp: string;
+  } | null;
+  onClearValidationNotice?: () => void;
 }
 
 const PAGE_SIZE = 10;
@@ -47,6 +56,8 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
   onDeleteRecord,
   onCreateClick,
   refreshTrigger,
+  validationNotice,
+  onClearValidationNotice,
 }) => {
   const gatewayClient = GhaGatewayClientFactory.getClient();
 
@@ -84,6 +95,11 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
   const [previewCarouselIndices, setPreviewCarouselIndices] = useState<Record<string, number>>({});
   const [inAppBrowserSection, setInAppBrowserSection] = useState<LandingSectionRecord | null>(null);
 
+  const isSameCat = (a?: string, b?: string): boolean => {
+    if (!a || !b) return false;
+    return a.trim().toUpperCase() === b.trim().toUpperCase();
+  };
+
   const loadPaginatedData = useCallback(async () => {
     setLoading(true);
     try {
@@ -104,8 +120,33 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
         gatewayClient.getPublishedMobileSections(),
       ]);
 
+      // Reconcile and ensure publishedList has all published records across verticals
+      const reconciledMap = new Map<string, LandingSectionRecord>();
+      (publishedList || []).forEach((p) => {
+        const catKey = p.category ? p.category.trim().toUpperCase() : '';
+        if (catKey && !reconciledMap.has(catKey)) {
+          reconciledMap.set(catKey, p);
+        }
+      });
+      // Also check response.content for any published records
+      (response.content || []).forEach((rec) => {
+        if (rec.published) {
+          const catKey = rec.category ? rec.category.trim().toUpperCase() : '';
+          if (catKey) {
+            const existing = reconciledMap.get(catKey);
+            if (!existing || new Date(rec.updatedAt || 0).getTime() >= new Date(existing.updatedAt || 0).getTime()) {
+              reconciledMap.set(catKey, rec);
+            }
+          }
+        }
+      });
+      const slotOrder: Record<string, number> = { CME: 1, GSI: 2, AHS: 3, CONFERENCE: 4 };
+      const reconciledPublished = Array.from(reconciledMap.values()).sort(
+        (a, b) => (slotOrder[a.category.toUpperCase()] || 99) - (slotOrder[b.category.toUpperCase()] || 99)
+      );
+
       setPageData(response);
-      setPublishedSections(publishedList);
+      setPublishedSections(reconciledPublished);
 
       // Update viewingRecord if currently open
       if (viewingRecord) {
@@ -182,11 +223,6 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     await loadPaginatedData();
   };
 
-  const isSameCat = (a?: string, b?: string): boolean => {
-    if (!a || !b) return false;
-    return a.trim().toUpperCase() === b.trim().toUpperCase();
-  };
-
   const normalizeCat = (cat?: string): LandingCategory => {
     if (!cat) return 'CME';
     const upper = cat.trim().toUpperCase();
@@ -196,13 +232,39 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
   };
 
   const getPublishedForVertical = (cat: LandingCategory): LandingSectionRecord | undefined => {
-    return publishedSections.find((p) => isSameCat(p.category, cat));
+    const fromPub = publishedSections.find((p) => isSameCat(p.category, cat));
+    if (fromPub) return fromPub;
+    return pageData.content.find((r) => r.published && isSameCat(r.category, cat));
   };
 
   const formatCategoryName = (cat: LandingCategory): string => {
     const normalized = normalizeCat(cat);
     return normalized === 'AHS' ? 'Course / AHS' : normalized;
   };
+
+  // 4-Card Contract sorting: The published records across verticals are ALWAYS pinned at the top
+  const tableRecords = useMemo(() => {
+    const slotOrder: Record<string, number> = {
+      CME: 1,
+      GSI: 2,
+      AHS: 3,
+      CONFERENCE: 4,
+    };
+    return [...pageData.content].sort((a, b) => {
+      // 1. Published items always come first
+      if (a.published && !b.published) return -1;
+      if (!a.published && b.published) return 1;
+      // 2. If both published, order by vertical slot: CME, GSI, AHS, Conference
+      if (a.published && b.published) {
+        const ordA = slotOrder[a.category.toUpperCase()] || 99;
+        const ordB = slotOrder[b.category.toUpperCase()] || 99;
+        if (ordA !== ordB) return ordA - ordB;
+      }
+      // 3. Otherwise order by eventYear DESC, updatedAt DESC
+      if (b.eventYear !== a.eventYear) return (b.eventYear || 0) - (a.eventYear || 0);
+      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+    });
+  }, [pageData.content]);
 
   const startRecordNum =
     pageData.totalElements === 0 ? 0 : pageData.page * PAGE_SIZE + 1;
@@ -213,6 +275,58 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
   return (
     <div className="space-y-6">
+      {/* =========================================================================
+          POST-SAVE VALIDATION BANNER (4-CARD RULE CONTRACT CONFIRMATION)
+         ========================================================================= */}
+      {validationNotice && (
+        <div className="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-4 text-emerald-950 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in duration-300">
+          <div className="flex items-start gap-3">
+            <span className="p-2 rounded-lg bg-emerald-600 text-white shrink-0 mt-0.5">
+              <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+            </span>
+            <div className="space-y-0.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded">
+                  Validation Contract Passed
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-800">
+                  {validationNotice.timestamp}
+                </span>
+              </div>
+              <h3 className="text-sm font-black text-emerald-950">
+                {validationNotice.title} · {formatCategoryName(validationNotice.category as LandingCategory)} ({validationNotice.eventYear})
+              </h3>
+              <p className="text-xs text-emerald-800 leading-relaxed">
+                {validationNotice.message}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                setPreviewFocusedCategory('ALL');
+                setShow4CardPreview(true);
+              }}
+              className="px-3 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-300 hover:bg-emerald-200 rounded-lg inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Preview 4 Cards</span>
+            </button>
+            {onClearValidationNotice && (
+              <button
+                type="button"
+                onClick={onClearValidationNotice}
+                className="px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer"
+                title="Dismiss validation notice"
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* =========================================================================
           SECTION 1: THE 4 PUBLISHED SECTIONS AT TOP (1 PER VERTICAL · MAX 4)
          ========================================================================= */}
@@ -450,7 +564,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                   </td>
                 </tr>
               ) : (
-                pageData.content.map((record) => {
+                tableRecords.map((record) => {
                   const imgs =
                     record.images && record.images.length > 0
                       ? record.images

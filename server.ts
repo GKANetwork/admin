@@ -1171,15 +1171,31 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
   }
 
   findPublished(category?: LandingCategory): LandingSectionDocument[] {
-    const slotOrder: Record<LandingCategory, number> = {
+    const slotOrder: Record<string, number> = {
       CME: 1,
       GSI: 2,
       AHS: 3,
       Conference: 4,
+      CONFERENCE: 4,
     };
-    return this.findAll()
-      .filter((doc) => doc.published === true && (!category || doc.category === category))
-      .sort((a, b) => (slotOrder[a.category] || 99) - (slotOrder[b.category] || 99));
+    const seen = new Set<string>();
+    const result: LandingSectionDocument[] = [];
+    const all = this.findAll();
+    for (const doc of all) {
+      if (!doc.published) continue;
+      const upperDoc = String(doc.category || '').toUpperCase();
+      const normCat = upperDoc === 'CONFERENCE' ? 'Conference' : (upperDoc === 'ASI' || upperDoc === 'AHS' ? 'AHS' : upperDoc);
+      if (category) {
+        const upperQuery = String(category).toUpperCase();
+        const normQuery = upperQuery === 'CONFERENCE' ? 'Conference' : (upperQuery === 'ASI' || upperQuery === 'AHS' ? 'AHS' : upperQuery);
+        if (normCat !== normQuery) continue;
+      }
+      if (!seen.has(normCat)) {
+        seen.add(normCat);
+        result.push(doc);
+      }
+    }
+    return result.sort((a, b) => (slotOrder[a.category] || 99) - (slotOrder[b.category] || 99));
   }
 
   findById(id: string): LandingSectionDocument | undefined {
@@ -1532,17 +1548,14 @@ async function startServer() {
     const corrId = (req as Request & { correlationId?: string }).correlationId || 'gha-mobile';
     const activeCfg = blobStorage.getActiveProfileConfig();
     const category = req.query.category as LandingCategory | undefined;
-    const validCategories: LandingCategory[] = ['CME', 'GSI', 'AHS', 'Conference'];
-    const filterCat =
-      category && validCategories.includes(category) ? category : undefined;
-    const publishedList = repository.findPublished(filterCat);
+    const publishedList = repository.findPublished(category);
 
     logger.log(
       activeCfg.profile,
       corrId,
       'DEBUG',
       'c.g.e.a.LandingSectionServiceImpl',
-      `Mobile App Landing Page query (category=${filterCat || 'ALL'}, published=true) returned ${publishedList.length} records`
+      `Mobile App Landing Page query (category=${category || 'ALL'}, published=true) returned ${publishedList.length} records`
     );
     res.json(publishedList);
   });
