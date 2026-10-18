@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BlobProviderType,
   DebugLogEntry,
@@ -6,6 +7,7 @@ import {
   GhaProfile,
   LANDING_CATEGORIES,
   LandingCategory,
+  normalizeLandingCategory,
   LandingSectionRecord,
   PendingImageUpload,
   SectionImageAsset,
@@ -32,6 +34,7 @@ import {
   LayoutList,
   Sparkles,
   CheckCircle2,
+  CircleAlert,
 } from 'lucide-react';
 
 // When running locally on Mac (localhost / 127.0.0.1 / custom domain), only Landing Listing & AdminForm are shown.
@@ -80,9 +83,8 @@ export default function App() {
   const [formCategory, setFormCategory] = useState<LandingCategory>(() => {
     try {
       const stored = localStorage.getItem('gha_last_category');
-      if (stored && ['CME', 'GSI', 'AHS', 'Conference', 'CONFERENCE'].includes(stored)) {
-        return (stored.toUpperCase() === 'CONFERENCE' ? 'Conference' : stored) as LandingCategory;
-      }
+      const normalized = normalizeLandingCategory(stored);
+      if (normalized) return normalized;
     } catch {}
     return 'Conference';
   });
@@ -136,21 +138,11 @@ export default function App() {
         gatewayClient.getPublishedMobileSections(),
         gatewayClient.getDebugLogs(),
       ]);
-      // Reconcile and guarantee all 4 verticals (CME, GSI, AHS, Conference) have an active card
+      // Reconcile the active feed from records the service actually reports as published.
       const pubMap = new Map<string, LandingSectionRecord>();
       (pubOnly || []).forEach((p) => {
-        const k = (p.category || '').trim().toUpperCase();
+        const k = normalizeLandingCategory(p.category)?.toUpperCase() || '';
         if (k) pubMap.set(k, p);
-      });
-      ['CME', 'GSI', 'AHS', 'CONFERENCE'].forEach((catKey) => {
-        if (!pubMap.has(catKey)) {
-          const match = (allAdmin || []).find(
-            (a) => (a.category || '').trim().toUpperCase() === catKey
-          );
-          if (match) {
-            pubMap.set(catKey, { ...match, published: true });
-          }
-        }
       });
       const slotOrder: Record<string, number> = { CME: 1, GSI: 2, AHS: 3, CONFERENCE: 4 };
       const reconciledPub = Array.from(pubMap.values()).sort(
@@ -202,7 +194,7 @@ export default function App() {
       // fallback to passed section
     }
     setEditingId(latest.id);
-    const cleanCat = latest.category.toUpperCase() === 'CONFERENCE' ? 'Conference' : (latest.category as LandingCategory);
+    const cleanCat = normalizeLandingCategory(latest.category) || latest.category;
     setFormCategory(cleanCat);
     try {
       localStorage.setItem('gha_last_category', cleanCat);
@@ -329,14 +321,13 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString(),
       });
 
+      await fetchAllData();
       showToast(
         'success',
         `VALIDATION PASSED: ${resultRecord.title} (${catLabel}) successfully saved with ${totalImages} image(s)! ${
           resultRecord.published ? 'Live in top 4-card slots & pinned to listing.' : 'Archived in history.'
         }`
       );
-
-      await fetchAllData();
 
       // Clear input fields but preserve category so it DOES NOT default to CME!
       setEditingId(null);
@@ -365,6 +356,7 @@ export default function App() {
     const nextPublished = !section.published;
     try {
       await gatewayClient.togglePublishStatus(section.id, nextPublished);
+      await fetchAllData();
       showToast(
         'success',
         `${section.category} (${section.eventYear}) "${section.title}" is now ${
@@ -373,7 +365,6 @@ export default function App() {
             : 'UNPUBLISHED (Removed from Mobile Landing Page)'
         }`
       );
-      await fetchAllData();
       if (editingId === section.id) {
         setFormPublished(nextPublished);
       }
@@ -385,14 +376,14 @@ export default function App() {
   const handleDeleteSection = async (section: LandingSectionRecord) => {
     try {
       await gatewayClient.deleteLandingSection(section.id);
-      showToast(
-        'success',
-        `Deleted ${section.category} (${section.eventYear}) section from event.landing_sections`
-      );
       if (editingId === section.id) {
         resetForm();
       }
       await fetchAllData();
+      showToast(
+        'success',
+        `Deleted ${section.category} (${section.eventYear}) section from event.landing_sections`
+      );
     } catch {
       showToast('error', 'Failed to delete section');
     }
@@ -600,8 +591,8 @@ export default function App() {
 
 
         {/* Floating Toast Notification (Persistent Viewport Presence · Never Hidden by Vertical Scroll) */}
-        {feedbackBanner && (
-          <div className="fixed top-20 right-6 z-50 max-w-md w-full animate-in slide-in-from-top-2 duration-300 drop-shadow-2xl">
+        {feedbackBanner && createPortal(
+          <div className="fixed inset-x-4 top-20 z-[100] mx-auto w-auto max-w-md animate-in slide-in-from-top-2 duration-300 drop-shadow-2xl sm:inset-x-auto sm:right-6 sm:mx-0 sm:w-full">
             <div
               className={`p-4 rounded-xl border-2 shadow-2xl flex items-start justify-between gap-3 backdrop-blur-md ${
                 feedbackBanner.type === 'success'
@@ -610,12 +601,20 @@ export default function App() {
               }`}
             >
               <div className="flex items-start gap-3">
-                <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                <span className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
+                  feedbackBanner.type === 'success'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-red-500/20 text-red-300'
+                }`}>
+                  {feedbackBanner.type === 'success'
+                    ? <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                    : <CircleAlert className="w-5 h-5 stroke-[2.5]" />}
                 </span>
                 <div>
-                  <div className="text-[11px] font-black font-mono uppercase tracking-wider text-emerald-400">
-                    Live Notification
+                  <div className={`text-[11px] font-black font-mono uppercase tracking-wider ${
+                    feedbackBanner.type === 'success' ? 'text-emerald-400' : 'text-red-300'
+                  }`}>
+                    {feedbackBanner.type === 'success' ? 'Success' : 'Action failed'}
                   </div>
                   <p className="text-xs font-semibold text-slate-100 mt-0.5 leading-snug">
                     {feedbackBanner.message}
@@ -630,7 +629,8 @@ export default function App() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* TAB 1: ADMIN FORM FOR CREATION / EDITING WITH LIVE RIGHT-SIDE PREVIEW */}
@@ -667,7 +667,9 @@ export default function App() {
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {LANDING_CATEGORIES.map((cat) => {
-                          const isSelected = formCategory === cat.code;
+                          const isSelected =
+                            normalizeLandingCategory(formCategory) ===
+                            normalizeLandingCategory(cat.code);
                           return (
                             <button
                               key={cat.code}

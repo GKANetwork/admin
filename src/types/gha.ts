@@ -1,4 +1,19 @@
 export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'CONFERENCE';
+
+export const normalizeLandingCategory = (value?: string | null): LandingCategory | null => {
+  switch (value?.trim().toUpperCase()) {
+    case 'CME':
+      return 'CME';
+    case 'GSI':
+      return 'GSI';
+    case 'AHS':
+      return 'AHS';
+    case 'CONFERENCE':
+      return 'Conference';
+    default:
+      return null;
+  }
+};
 export type GhaProfile = 'dev' | 'qa' | 'prod';
 export type BlobProviderType = 'local-fs' | 'seaweedfs';
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LANDING_CATEGORIES, LandingCategory, LandingSectionRecord } from '../types/gha';
+import { LANDING_CATEGORIES, LandingCategory, LandingSectionRecord, normalizeLandingCategory } from '../types/gha';
 import { ResilientSectionImage } from './ResilientSectionImage';
 import {
   Smartphone,
@@ -42,8 +42,9 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
   const [carouselIndices, setCarouselIndices] = useState<Record<string, number>>({});
 
   const isSameCat = (a?: string, b?: string): boolean => {
-    if (!a || !b) return false;
-    return a.trim().toUpperCase() === b.trim().toUpperCase();
+    const normalizedA = normalizeLandingCategory(a);
+    const normalizedB = normalizeLandingCategory(b);
+    return normalizedA !== null && normalizedA === normalizedB;
   };
 
   // Strict guarantee: only records with published === true appear in the Mobile App Landing Page
@@ -362,7 +363,7 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                   All ({publishedSections.length})
                 </button>
                 {LANDING_CATEGORIES.map((cat) => {
-                  const count = publishedSections.filter((s) => s.category === cat.code).length;
+                  const count = publishedSections.filter((s) => isSameCat(s.category, cat.code)).length;
                   return (
                     <button
                       key={cat.code}
