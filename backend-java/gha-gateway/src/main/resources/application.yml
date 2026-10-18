@@ -1,0 +1,122 @@
+server:
+  port: ${GHA_GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: gha-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    discovery:
+      enabled: ${EUREKA_ENABLED:false}
+    service-registry:
+      auto-registration:
+        enabled: ${EUREKA_ENABLED:false}
+    gateway:
+      routes:
+        - id: gha-event-service-route
+          uri: ${GHA_EVENT_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/events/**
+          filters:
+            - PreserveHostHeader
+            - AddRequestHeader=X-GHA-Gateway-Routed, true
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: ${EUREKA_ENABLED:false}
+    fetch-registry: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+---
+# ===================================================================
+# DEV PROFILE (Local Mac Development - Direct routing without Eureka)
+# To enable Eureka locally, pass: -DEUREKA_ENABLED=true -DGHA_EVENT_SERVICE_URI=lb://GHA-EVENT-SERVICE
+# ===================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  cloud:
+    discovery:
+      enabled: ${EUREKA_ENABLED:false}
+    service-registry:
+      auto-registration:
+        enabled: ${EUREKA_ENABLED:false}
+    gateway:
+      discovery:
+        locator:
+          enabled: ${EUREKA_ENABLED:false}
+          lower-case-service-id: true
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: ${EUREKA_ENABLED:false}
+    fetch-registry: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+logging:
+  level:
+    root: INFO
+    com.gha.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: qa
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: gha-event-service-route
+          uri: lb://GHA-EVENT-SERVICE
+          predicates:
+            - Path=/api/v1/events/**
+          filters:
+            - PreserveHostHeader
+            - AddRequestHeader=X-GHA-Gateway-Routed, true
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://gha-eureka-qa:8761/eureka/}
+logging:
+  level:
+    root: INFO
+    com.gha.gateway: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: gha-event-service-route
+          uri: lb://GHA-EVENT-SERVICE
+          predicates:
+            - Path=/api/v1/events/**
+          filters:
+            - PreserveHostHeader
+            - AddRequestHeader=X-GHA-Gateway-Routed, true
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+logging:
+  level:
+    root: WARN
+    com.gha.gateway: INFO

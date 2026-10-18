@@ -1,0 +1,534 @@
+[
+  {
+    "id": "67f1a2b0c9e77a0012a40101",
+    "category": "CME",
+    "eventYear": 2026,
+    "title": "National Continuing Medical Education (CME) Accreditation Series 2026",
+    "description": "Accredited clinical modules, live case symposiums, and State Medical Council credit-bearing workshops curated for practicing clinicians and post-graduate residents.",
+    "url": "https://events.globalhealthacademy.org/cme/2026",
+    "images": [
+      {
+        "blobPath": "/gha-files/cme/2026_01_gha_cme_symposium_2026.jpg",
+        "previewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+        "fileName": "gha_cme_symposium_2026.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 284600
+      },
+      {
+        "blobPath": "/gha-files/cme/2026_02_gha_cme_auditorium_hall.jpg",
+        "previewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+        "fileName": "gha_cme_auditorium_hall.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 310200
+      }
+    ],
+    "imageBlobPath": "/gha-files/cme/2026_01_gha_cme_symposium_2026.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+    "imageFileName": "gha_cme_symposium_2026.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 284600,
+    "published": true,
+    "history": [
+      {
+        "id": "h-101-2",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Published 2026 CME Accreditation Series to Mobile App Landing Page",
+        "timestamp": "2026-10-08T04:15:00.000Z"
+      },
+      {
+        "id": "h-101-1",
+        "action": "CREATED",
+        "publishedState": false,
+        "summary": "Created CME 2026 section with 2 images in event_db",
+        "timestamp": "2026-09-12T08:30:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-12T08:30:00.000Z",
+    "updatedAt": "2026-10-08T04:15:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40102",
+    "category": "GSI",
+    "eventYear": 2026,
+    "title": "Gastrointestinal Society of India (GSI) Endoscopy & Hepatology Forum 2026",
+    "description": "Advanced therapeutic endoscopy live transmissions, hepatobiliary consensus panels, and luminal gastroenterology fellowships hosted across regional chapters.",
+    "url": "https://events.globalhealthacademy.org/gsi/2026",
+    "images": [
+      {
+        "blobPath": "/gha-files/gsi/2026_01_gha_gsi_summit_2026.jpg",
+        "previewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
+        "fileName": "gha_gsi_summit_2026.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 312400
+      },
+      {
+        "blobPath": "/gha-files/gsi/2026_02_gha_gsi_endoscopy_suite.jpg",
+        "previewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+        "fileName": "gha_gsi_endoscopy_suite.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 294000
+      }
+    ],
+    "imageBlobPath": "/gha-files/gsi/2026_01_gha_gsi_summit_2026.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
+    "imageFileName": "gha_gsi_summit_2026.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 312400,
+    "published": true,
+    "history": [
+      {
+        "id": "h-102-2",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Published GSI 2026 Endoscopy Forum to Mobile App Landing Page",
+        "timestamp": "2026-10-07T16:40:00.000Z"
+      },
+      {
+        "id": "h-102-1",
+        "action": "CREATED",
+        "publishedState": true,
+        "summary": "Created GSI 2026 section in event_db",
+        "timestamp": "2026-09-14T10:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-14T10:00:00.000Z",
+    "updatedAt": "2026-10-07T16:40:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40103",
+    "category": "AHS",
+    "eventYear": 2026,
+    "title": "Course / AHS Masterclass & Robotic Surgery Fellowship 2026",
+    "description": "Hands-on laparoscopic skill labs, robotic surgery certification tracks, and trauma management courses designed for surgical fellows and senior consultants.",
+    "url": "https://events.globalhealthacademy.org/course-ahs/2026",
+    "images": [
+      {
+        "blobPath": "/gha-files/ahs/2026_01_gha_ahs_course_2026.jpg",
+        "previewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+        "fileName": "gha_ahs_course_2026.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 298150
+      }
+    ],
+    "imageBlobPath": "/gha-files/ahs/2026_01_gha_ahs_course_2026.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+    "imageFileName": "gha_ahs_course_2026.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 298150,
+    "published": true,
+    "history": [
+      {
+        "id": "h-103-1",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Created and published Course / AHS 2026 track",
+        "timestamp": "2026-10-06T11:20:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-18T09:15:00.000Z",
+    "updatedAt": "2026-10-06T11:20:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40104",
+    "category": "Conference",
+    "eventYear": 2026,
+    "title": "GHA Annual International Medical Congress & Scientific Exhibition 2026",
+    "description": "Four-day plenary sessions, international keynote lectures, peer-reviewed abstract poster halls, and multi-specialty clinical workshops.",
+    "url": "https://events.globalhealthacademy.org/conference/2026",
+    "images": [
+      {
+        "blobPath": "/gha-files/conference/2026_01_gha_annual_conference_2026.jpg",
+        "previewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+        "fileName": "gha_annual_conference_2026.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 341900
+      },
+      {
+        "blobPath": "/gha-files/conference/2026_02_gha_conference_keynote_stage.jpg",
+        "previewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+        "fileName": "gha_conference_keynote_stage.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 284600
+      }
+    ],
+    "imageBlobPath": "/gha-files/conference/2026_01_gha_annual_conference_2026.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+    "imageFileName": "gha_annual_conference_2026.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 341900,
+    "published": true,
+    "history": [
+      {
+        "id": "h-104-1",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Published 2026 Annual International Medical Congress section",
+        "timestamp": "2026-10-05T18:10:00.000Z"
+      }
+    ],
+    "createdAt": "2026-09-20T14:00:00.000Z",
+    "updatedAt": "2026-10-05T18:10:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40105",
+    "category": "CME",
+    "eventYear": 2026,
+    "title": "Winter Clinical Pharmacology & ICU Antimicrobial Stewardship Update",
+    "description": "Intensive CME credit module covering ICU antimicrobial resistance protocols and precision dosing guidelines. Currently staged as unpublished draft.",
+    "url": "https://events.globalhealthacademy.org/cme/2026",
+    "images": [
+      {
+        "blobPath": "/gha-files/cme/2026_01_cme_winter_pharmacology_2026.jpg",
+        "previewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+        "fileName": "cme_winter_pharmacology_2026.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 245000
+      }
+    ],
+    "imageBlobPath": "/gha-files/cme/2026_01_cme_winter_pharmacology_2026.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+    "imageFileName": "cme_winter_pharmacology_2026.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 245000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-105-2",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Unpublished while awaiting final NMC credit code confirmation",
+        "timestamp": "2026-10-04T09:45:00.000Z"
+      },
+      {
+        "id": "h-105-1",
+        "action": "CREATED",
+        "publishedState": true,
+        "summary": "Created Winter CME 2026 section",
+        "timestamp": "2026-10-01T12:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-10-01T12:00:00.000Z",
+    "updatedAt": "2026-10-04T09:45:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40106",
+    "category": "GSI",
+    "eventYear": 2025,
+    "title": "GSI National Pancreatic & Biliary Endoscopy Workshop 2025",
+    "description": "ERCP and interventional EUS live clinical demonstrations with high-definition case archives from the 2025 Gastroenterology summit.",
+    "url": "https://events.globalhealthacademy.org/gsi/2025",
+    "images": [
+      {
+        "blobPath": "/gha-files/gsi/2025_01_gsi_ercp_workshop_2025.jpg",
+        "previewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
+        "fileName": "gsi_ercp_workshop_2025.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 276000
+      }
+    ],
+    "imageBlobPath": "/gha-files/gsi/2025_01_gsi_ercp_workshop_2025.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
+    "imageFileName": "gsi_ercp_workshop_2025.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 276000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-106-2",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Archived and unpublished after conclusion of 2025 GSI Workshop",
+        "timestamp": "2025-11-20T17:00:00.000Z"
+      },
+      {
+        "id": "h-106-1",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Published 2025 GSI Workshop to Mobile App Landing Page",
+        "timestamp": "2025-05-10T09:00:00.000Z"
+      }
+    ],
+    "createdAt": "2025-05-10T09:00:00.000Z",
+    "updatedAt": "2025-11-20T17:00:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40107",
+    "category": "AHS",
+    "eventYear": 2025,
+    "title": "AHS Minimal Access & Bariatric Surgery Fellowship Course 2025",
+    "description": "Comprehensive surgical skill curriculum covering sleeve gastrectomy, suturing ergonomics, and perioperative metabolic care.",
+    "url": "https://events.globalhealthacademy.org/course-ahs/2025",
+    "images": [
+      {
+        "blobPath": "/gha-files/ahs/2025_01_ahs_bariatric_course_2025.jpg",
+        "previewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+        "fileName": "ahs_bariatric_course_2025.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 289400
+      }
+    ],
+    "imageBlobPath": "/gha-files/ahs/2025_01_ahs_bariatric_course_2025.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+    "imageFileName": "ahs_bariatric_course_2025.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 289400,
+    "published": false,
+    "history": [
+      {
+        "id": "h-107-1",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Published evergreen 2025 AHS Fellowship Course module",
+        "timestamp": "2025-08-12T14:30:00.000Z"
+      }
+    ],
+    "createdAt": "2025-03-15T08:00:00.000Z",
+    "updatedAt": "2025-08-12T14:30:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40108",
+    "category": "Conference",
+    "eventYear": 2025,
+    "title": "GHA Annual Medical & Surgical Conclave — 2025 Edition",
+    "description": "Plenary symposiums on AI-assisted diagnostics, oncology multidisciplinary boards, and residency research paper presentations.",
+    "url": "https://events.globalhealthacademy.org/conference/2025",
+    "images": [
+      {
+        "blobPath": "/gha-files/conference/2025_01_gha_conclave_2025.jpg",
+        "previewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+        "fileName": "gha_conclave_2025.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 325000
+      }
+    ],
+    "imageBlobPath": "/gha-files/conference/2025_01_gha_conclave_2025.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+    "imageFileName": "gha_conclave_2025.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 325000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-108-2",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Unpublished 2025 Conclave landing banner following event completion",
+        "timestamp": "2025-12-15T19:00:00.000Z"
+      },
+      {
+        "id": "h-108-1",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Published 2025 Conclave registration banner",
+        "timestamp": "2025-01-20T11:00:00.000Z"
+      }
+    ],
+    "createdAt": "2025-01-20T11:00:00.000Z",
+    "updatedAt": "2025-12-15T19:00:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40109",
+    "category": "CME",
+    "eventYear": 2025,
+    "title": "Cardiovascular & Critical Care Emergency CME Symposium 2025",
+    "description": "Point-of-care ultrasound (POCUS), mechanical ventilation strategies, and acute coronary syndrome protocol updates.",
+    "url": "https://events.globalhealthacademy.org/cme/2025",
+    "images": [
+      {
+        "blobPath": "/gha-files/cme/2025_01_cme_critical_care_2025.jpg",
+        "previewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+        "fileName": "cme_critical_care_2025.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 268000
+      }
+    ],
+    "imageBlobPath": "/gha-files/cme/2025_01_cme_critical_care_2025.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+    "imageFileName": "cme_critical_care_2025.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 268000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-109-1",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Unpublished 2025 Critical Care CME section",
+        "timestamp": "2025-10-01T15:20:00.000Z"
+      }
+    ],
+    "createdAt": "2025-04-02T10:30:00.000Z",
+    "updatedAt": "2025-10-01T15:20:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40110",
+    "category": "GSI",
+    "eventYear": 2024,
+    "title": "GSI Inflammatory Bowel Disease (IBD) Clinical Consensus 2024",
+    "description": "Biologic therapy algorithms, mucosal healing assessment criteria, and multi-center registry findings for ulcerative colitis and Crohn disease.",
+    "url": "https://events.globalhealthacademy.org/gsi/2024",
+    "images": [
+      {
+        "blobPath": "/gha-files/gsi/2024_01_gsi_ibd_consensus_2024.jpg",
+        "previewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
+        "fileName": "gsi_ibd_consensus_2024.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 271000
+      }
+    ],
+    "imageBlobPath": "/gha-files/gsi/2024_01_gsi_ibd_consensus_2024.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
+    "imageFileName": "gsi_ibd_consensus_2024.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 271000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-110-1",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Archived 2024 GSI IBD Consensus landing section",
+        "timestamp": "2024-11-30T16:00:00.000Z"
+      }
+    ],
+    "createdAt": "2024-06-11T09:00:00.000Z",
+    "updatedAt": "2024-11-30T16:00:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40111",
+    "category": "AHS",
+    "eventYear": 2024,
+    "title": "AHS Hepatobiliary & Trauma Surgery Intensive Course 2024",
+    "description": "Cadaveric dissection workshops, vascular control techniques in abdominal trauma, and postoperative ICU management.",
+    "url": "https://events.globalhealthacademy.org/course-ahs/2024",
+    "images": [
+      {
+        "blobPath": "/gha-files/ahs/2024_01_ahs_trauma_course_2024.jpg",
+        "previewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+        "fileName": "ahs_trauma_course_2024.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 291000
+      }
+    ],
+    "imageBlobPath": "/gha-files/ahs/2024_01_ahs_trauma_course_2024.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
+    "imageFileName": "ahs_trauma_course_2024.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 291000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-111-1",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Unpublished 2024 AHS Trauma Course section",
+        "timestamp": "2024-09-22T12:10:00.000Z"
+      }
+    ],
+    "createdAt": "2024-02-18T08:45:00.000Z",
+    "updatedAt": "2024-09-22T12:10:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40112",
+    "category": "Conference",
+    "eventYear": 2024,
+    "title": "GHA 12th Annual National Medical Research Congress 2024",
+    "description": "Keynote addresses from Deans of Medical Sciences, young investigator award sessions, and clinical innovation exhibitions.",
+    "url": "https://events.globalhealthacademy.org/conference/2024",
+    "images": [
+      {
+        "blobPath": "/gha-files/conference/2024_01_gha_congress_2024.jpg",
+        "previewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+        "fileName": "gha_congress_2024.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 319000
+      }
+    ],
+    "imageBlobPath": "/gha-files/conference/2024_01_gha_congress_2024.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+    "imageFileName": "gha_congress_2024.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 319000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-112-1",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Unpublished 2024 Annual Congress section at year close",
+        "timestamp": "2024-12-18T18:00:00.000Z"
+      }
+    ],
+    "createdAt": "2024-01-10T10:00:00.000Z",
+    "updatedAt": "2024-12-18T18:00:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40113",
+    "category": "CME",
+    "eventYear": 2023,
+    "title": "Foundation CME in Clinical Research Methodology & Biostatistics 2023",
+    "description": "Mandatory research methodology training for medical faculty and postgraduate residents covering randomized trial design and ethics approval.",
+    "url": "https://events.globalhealthacademy.org/cme/2023",
+    "images": [
+      {
+        "blobPath": "/gha-files/cme/2023_01_cme_biostatistics_2023.jpg",
+        "previewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+        "fileName": "cme_biostatistics_2023.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 259000
+      }
+    ],
+    "imageBlobPath": "/gha-files/cme/2023_01_cme_biostatistics_2023.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_cme_symposium_1791459504997.jpg",
+    "imageFileName": "cme_biostatistics_2023.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 259000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-113-1",
+        "action": "PUBLISHED",
+        "publishedState": true,
+        "summary": "Kept published as permanent reference CME course on Mobile App",
+        "timestamp": "2024-01-15T11:00:00.000Z"
+      }
+    ],
+    "createdAt": "2023-07-05T09:30:00.000Z",
+    "updatedAt": "2024-01-15T11:00:00.000Z"
+  },
+  {
+    "id": "67f1a2b0c9e77a0012a40114",
+    "category": "Conference",
+    "eventYear": 2023,
+    "title": "GHA 11th Annual Healthcare Leadership & Clinical Summit 2023",
+    "description": "Hospital accreditation standards, digital health records interoperability, and multi-center surgical outcome benchmarks.",
+    "url": "https://events.globalhealthacademy.org/conference/2023",
+    "images": [
+      {
+        "blobPath": "/gha-files/conference/2023_01_gha_summit_2023.jpg",
+        "previewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+        "fileName": "gha_summit_2023.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 305000
+      }
+    ],
+    "imageBlobPath": "/gha-files/conference/2023_01_gha_summit_2023.jpg",
+    "imagePreviewUrl": "/src/assets/images/gha_annual_conference_1791459556638.jpg",
+    "imageFileName": "gha_summit_2023.jpg",
+    "imageMimeType": "image/jpeg",
+    "imageSizeBytes": 305000,
+    "published": false,
+    "history": [
+      {
+        "id": "h-114-1",
+        "action": "UNPUBLISHED",
+        "publishedState": false,
+        "summary": "Unpublished 2023 Summit section",
+        "timestamp": "2023-12-10T17:30:00.000Z"
+      }
+    ],
+    "createdAt": "2023-02-14T08:00:00.000Z",
+    "updatedAt": "2023-12-10T17:30:00.000Z"
+  }
+]

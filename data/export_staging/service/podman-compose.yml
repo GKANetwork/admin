@@ -1,0 +1,106 @@
+version: "3.8"
+
+# Run on Hosting Raja VPS with:
+# podman-compose -f podman-compose.yml up -d
+
+services:
+  nginx-proxy:
+    image: docker.io/library/nginx:1.27-alpine
+    container_name: gha-nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,Z
+      - ../dist:/usr/share/nginx/html:ro,Z
+    depends_on:
+      - gha-gateway
+    networks:
+      - gha-net
+
+  eureka-server:
+    image: docker.io/library/eclipse-temurin:17-jre-alpine
+    container_name: gha-eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SERVER_PORT=8761
+    networks:
+      - gha-net
+
+  gha-gateway:
+    image: docker.io/library/eclipse-temurin:17-jre-alpine
+    container_name: gha-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET:-gha-enterprise-hmac-sha256-secret-key-2026}
+    depends_on:
+      - eureka-server
+    networks:
+      - gha-net
+
+  gha-event-service:
+    image: docker.io/library/eclipse-temurin:17-jre-alpine
+    container_name: gha-event-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVER_PORT=8082
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/event_db
+      - GHA_MONGO_DB=event_db
+      - GHA_BLOB_STORE_PATH=/seaweedfs/buckets/gha-event-media/landing-sections
+      - GHA_SEAWEEDFS_FILER_URL=http://seaweedfs:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - eureka-server
+      - mongodb
+      - seaweedfs
+      - rabbitmq
+    networks:
+      - gha-net
+
+  mongodb:
+    image: docker.io/library/mongo:7.0
+    container_name: gha-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=event_db
+    volumes:
+      - gha-mongo-data:/data/db:Z
+    networks:
+      - gha-net
+
+  seaweedfs:
+    image: docker.io/chrislusf/seaweedfs:latest
+    container_name: gha-seaweedfs
+    ports:
+      - "8888:8888" # Filer HTTP API
+      - "8333:8333" # S3 Gateway
+      - "9333:9333" # Master Server
+    command: "server -s3 -filer -dir=/data"
+    volumes:
+      - gha-seaweed-data:/data:Z
+    networks:
+      - gha-net
+
+  rabbitmq:
+    image: docker.io/library/rabbitmq:3.13-management-alpine
+    container_name: gha-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - gha-net
+
+volumes:
+  gha-mongo-data:
+  gha-seaweed-data:
+
+networks:
+  gha-net:
+    driver: bridge

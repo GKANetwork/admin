@@ -1,0 +1,65 @@
+server:
+  port: ${GHA_GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: gha-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: gha-event-service-route
+          uri: lb://GHA-EVENT-SERVICE
+          predicates:
+            - Path=/api/v1/events/**
+          filters:
+            - PreserveHostHeader
+            - AddRequestHeader=X-GHA-Gateway-Routed, true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+logging:
+  level:
+    root: INFO
+    com.gha.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: qa
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://gha-eureka-qa:8761/eureka/}
+logging:
+  level:
+    root: INFO
+    com.gha.gateway: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+logging:
+  level:
+    root: WARN
+    com.gha.gateway: INFO

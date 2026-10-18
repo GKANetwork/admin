@@ -1,0 +1,33 @@
+# ===================================================================
+# DEV PROFILE (application-dev.yml)
+# Run with: -Dspring.profiles.active=dev or SPRING_PROFILES_ACTIVE=dev
+# Uses local disk storage by default (or local SeaweedFS) + verbose DEBUG logs
+# ===================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  data:
+    mongodb:
+      uri: ${GHA_MONGO_URI:mongodb://localhost:27017/event_db}
+      database: ${GHA_MONGO_DB:event_db}
+
+gha:
+  environment: dev
+  blob-store:
+    # Switch between 'local-fs' (stores directly on local machine folder) and 'seaweedfs'
+    provider: ${GHA_BLOB_PROVIDER:local-fs}
+    base-path: ${GHA_BLOB_STORE_PATH:./local-gha-blobs/dev/landing-sections}
+    seaweedfs-filer-url: ${GHA_SEAWEEDFS_ENDPOINT:http://localhost:8888}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+logging:
+  level:
+    root: INFO
+    com.gha.eventservice: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
