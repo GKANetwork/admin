@@ -6,3 +6,14 @@ coverage/
 *.log
 .env*
 !.env.example
+.expo/
+.expo-shared/
+web-build/
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/build/
+server.js
+
+# Locally uploaded SeaweedFS development objects
+data/seaweedfs_blobs/dev/
