@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LANDING_CATEGORIES, LandingCategory, LandingSectionRecord, normalizeLandingCategory } from '../types/gha';
 import { ResilientSectionImage } from './ResilientSectionImage';
 import {
@@ -56,6 +56,21 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
 
   const hiddenDraftCount = Math.max(0, totalAdminCount - publishedSections.length);
 
+  useEffect(() => {
+    if (!visibleSections.length) return;
+    const timer = window.setInterval(() => {
+      setCarouselIndices((previous) => {
+        const next = { ...previous };
+        visibleSections.forEach((section) => {
+          const imageCount = section.images?.length || 1;
+          if (imageCount > 1) next[section.id] = ((previous[section.id] || 0) + 1) % imageCount;
+        });
+        return next;
+      });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [publishedSections, selectedCategory]);
+
   const getImageIndex = (sectionId: string, totalImages: number) => {
     const current = carouselIndices[sectionId] || 0;
     return current >= totalImages ? 0 : current;
@@ -79,13 +94,13 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
     return section.url && section.url.trim() ? section.url.trim() : '';
   };
 
-  const handleOpenInAppBrowser = (section: LandingSectionRecord) => {
-    const target = resolveTargetUrl(section);
+  const handleOpenInAppBrowser = (section: LandingSectionRecord, imageUrl?: string) => {
+    const target = imageUrl?.trim() || resolveTargetUrl(section);
     if (!target) {
       setActiveDetail(section);
       return;
     }
-    setInAppBrowserSection(section);
+    setInAppBrowserSection({ ...section, url: target });
     setBrowserViewMode('portal');
   };
 
@@ -427,8 +442,8 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                     return (
                       <div className="space-y-2.5">
                         <div
-                          onClick={() => handleOpenInAppBrowser(activeDetail)}
-                          title={`Click image to open ${resolveTargetUrl(activeDetail)} in In-App Browser`}
+                          onClick={() => handleOpenInAppBrowser(activeDetail, currentImg.url)}
+                          title={`Click image to open ${currentImg.url || resolveTargetUrl(activeDetail) || 'details'} in In-App Browser`}
                           className="aspect-video rounded-xl overflow-hidden bg-slate-900 relative cursor-pointer group"
                         >
                           <ResilientSectionImage
@@ -564,7 +579,7 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                         ];
                   const currentIdx = getImageIndex(section.id, imgs.length);
                   const activeImg = imgs[currentIdx] || imgs[0];
-                  const targetUrl = resolveTargetUrl(section);
+                  const targetUrl = activeImg.url?.trim() || resolveTargetUrl(section);
 
                   return (
                     <article
@@ -573,7 +588,7 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                     >
                       {/* Clicking the Image redirects to section.url in the Mobile In-App Browser */}
                       <div
-                        onClick={() => handleOpenInAppBrowser(section)}
+                        onClick={() => handleOpenInAppBrowser(section, activeImg.url)}
                         title={`Tap image to open ${targetUrl} in In-App Browser`}
                         className="aspect-video w-full rounded-xl overflow-hidden bg-slate-900 mb-2.5 relative cursor-pointer"
                       >

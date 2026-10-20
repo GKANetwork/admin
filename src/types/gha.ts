@@ -59,6 +59,7 @@ export interface SectionImageAsset {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  url?: string;
 }
 
 export interface SectionAuditHistoryEntry {
@@ -76,6 +77,7 @@ export interface PendingImageUpload {
   sizeBytes: number;
   base64Data: string;
   previewUrl: string;
+  url: string;
 }
 
 export interface LandingSectionRecord {
@@ -130,6 +132,7 @@ export interface UpsertLandingSectionPayload {
     mimeType: string;
     sizeBytes: number;
     base64Data: string;
+    url?: string;
   }>;
 }
 

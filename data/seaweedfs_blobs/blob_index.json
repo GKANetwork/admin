@@ -10,5 +10,17 @@
   "/gha-files/cme/1791802532928_WhatsApp_Image_2026-07-20_at_23.27.33.jpeg": {
     "localFile": "/app/applet/data/seaweedfs_blobs/dev/cme/1791802532928_WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
     "mimeType": "image/jpeg"
+  },
+  "/gha-files/cme/1791956349314_gha_cme_symposium_1791459504997.jpg": {
+    "localFile": "/Users/jayakumar/project/gha/mobile-app/code/ui/admin/data/seaweedfs_blobs/dev/cme/1791956349314_gha_cme_symposium_1791459504997.jpg",
+    "mimeType": "image/jpeg"
+  },
+  "/gha-files/gsi/1791956434740_gha_gsi_summit_1791459527929.jpg": {
+    "localFile": "/Users/jayakumar/project/gha/mobile-app/code/ui/admin/data/seaweedfs_blobs/dev/gsi/1791956434740_gha_gsi_summit_1791459527929.jpg",
+    "mimeType": "image/jpeg"
+  },
+  "/gha-files/ahs/1791956859495_gha_asi_course_1791459544460.jpg": {
+    "localFile": "/Users/jayakumar/project/gha/mobile-app/code/ui/admin/data/seaweedfs_blobs/dev/ahs/1791956859495_gha_asi_course_1791459544460.jpg",
+    "mimeType": "image/jpeg"
   }
 }

@@ -239,6 +239,24 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     return undefined;
   };
 
+  useEffect(() => {
+    if (!show4CardPreview) return;
+    const timer = window.setInterval(() => {
+      setPreviewCarouselIndices((previous) => {
+        const next = { ...previous };
+        VERTICAL_SLOTS.forEach((category) => {
+          const section = getPublishedForVertical(category);
+          const imageCount = section?.images?.length || 1;
+          if (section && imageCount > 1) {
+            next[section.id] = ((previous[section.id] || 0) + 1) % imageCount;
+          }
+        });
+        return next;
+      });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [show4CardPreview, publishedSections]);
+
   const formatCategoryName = (cat: LandingCategory): string => {
     const normalized = normalizeCat(cat);
     return normalized === 'AHS' ? 'Course / AHS' : normalized;
@@ -1109,7 +1127,13 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                               className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs"
                             >
                               {/* Card Image Banner & Carousel */}
-                              <div className="aspect-video w-full relative bg-slate-900 overflow-hidden">
+                              <div
+                                className="aspect-video w-full relative bg-slate-900 overflow-hidden cursor-pointer"
+                                onClick={() => {
+                                  const targetUrl = activeImg.url?.trim() || section.url?.trim();
+                                  if (targetUrl) setInAppBrowserSection({ ...section, url: targetUrl });
+                                }}
+                              >
                                 <ResilientSectionImage
                                   src={activeImg.previewUrl}
                                   alt={section.title}
@@ -1172,10 +1196,13 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                                 </p>
 
                                 <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-100">
-                                  {section.url ? (
+                                  {(activeImg.url || section.url) ? (
                                     <button
                                       type="button"
-                                      onClick={() => setInAppBrowserSection(section)}
+                                      onClick={() => setInAppBrowserSection({
+                                        ...section,
+                                        url: activeImg.url?.trim() || section.url,
+                                      })}
                                       className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                                     >
                                       <span>Explore Event</span>

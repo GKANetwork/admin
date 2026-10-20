@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LandingCategory, SectionImageAsset, PendingImageUpload } from '../types/gha';
 import { ResilientSectionImage } from './ResilientSectionImage';
 import {
@@ -42,12 +42,14 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
     fileName: string;
     isPending?: boolean;
     sizeKb?: number;
+    url?: string;
   }> = [
     ...retainedImages.map((img, i) => ({
       id: `retained-${i}-${img.blobPath}`,
       previewUrl: img.previewUrl,
       fileName: img.fileName,
       isPending: false,
+      url: img.url,
     })),
     ...pendingUploads.map((u) => ({
       id: u.id,
@@ -55,12 +57,22 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
       fileName: u.fileName,
       isPending: true,
       sizeKb: Math.round(u.sizeBytes / 1024),
+      url: u.url,
     })),
   ];
 
   const totalImages = previewImages.length;
   const safeIdx = totalImages > 0 ? (activeImageIdx % totalImages + totalImages) % totalImages : 0;
   const currentImage = totalImages > 0 ? previewImages[safeIdx] : null;
+  const currentImageUrl = currentImage?.url?.trim() || url.trim();
+
+  useEffect(() => {
+    if (totalImages < 2) return;
+    const timer = window.setInterval(() => {
+      setActiveImageIdx((current) => (current + 1) % totalImages);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [totalImages]);
 
   const displayTitle =
     title.trim() ||
@@ -177,7 +189,7 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
               )}
 
               {/* Redirect URL indicator chip */}
-              {url.trim() && (
+              {currentImageUrl && (
                 <div className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-emerald-600/90 text-white text-[9px] font-medium flex items-center gap-1 z-20 backdrop-blur-xs">
                   <Globe className="w-2.5 h-2.5" />
                   <span className="truncate max-w-[100px]">Link</span>
@@ -209,9 +221,9 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
               </p>
 
               {/* Redirect URL bar if set */}
-              {url.trim() && (
+              {currentImageUrl && (
                 <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-mono text-emerald-800 flex items-center justify-between gap-1">
-                  <span className="truncate">Tapping image opens: {url}</span>
+                  <span className="truncate">Tapping image opens: {currentImageUrl}</span>
                   <ExternalLink className="w-3 h-3 shrink-0 text-emerald-600" />
                 </div>
               )}
@@ -221,7 +233,7 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
                 <span className="text-[10px] font-medium text-slate-500">
                   {totalImages === 0 ? 'Default banner' : `${totalImages} photo${totalImages > 1 ? 's' : ''}`}
                 </span>
-                {url.trim() ? (
+                {currentImageUrl ? (
                   <span className="text-[11px] font-semibold text-emerald-700 inline-flex items-center gap-0.5">
                     <span>Open Details</span>
                     <ExternalLink className="w-2.5 h-2.5" />

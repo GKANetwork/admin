@@ -63,27 +63,27 @@
     "url": "https://events.globalhealthacademy.org/gsi-summit/2026",
     "images": [
       {
-        "blobPath": "./local-gha-blobs/dev/landing-sections/gsi/2026_01_gha_gsi_summit_2026.jpg",
-        "previewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
-        "fileName": "gha_gsi_summit_2026.jpg",
+        "blobPath": "/gha-files/gsi/1791956434740_gha_gsi_summit_1791459527929.jpg",
+        "previewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fgsi%2F1791956434740_gha_gsi_summit_1791459527929.jpg",
+        "fileName": "gha_gsi_summit_1791459527929.jpg",
         "mimeType": "image/jpeg",
-        "sizeBytes": 312400
-      },
-      {
-        "blobPath": "./local-gha-blobs/dev/landing-sections/gsi/2026_02_gha_gsi_endoscopy_suite.jpg",
-        "previewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
-        "fileName": "gha_gsi_endoscopy_suite.jpg",
-        "mimeType": "image/jpeg",
-        "sizeBytes": 294000
+        "sizeBytes": 805147
       }
     ],
-    "imageBlobPath": "./local-gha-blobs/dev/landing-sections/gsi/2026_01_gha_gsi_summit_2026.jpg",
-    "imagePreviewUrl": "/src/assets/images/gha_gsi_summit_1791459527929.jpg",
-    "imageFileName": "gha_gsi_summit_2026.jpg",
+    "imageBlobPath": "/gha-files/gsi/1791956434740_gha_gsi_summit_1791459527929.jpg",
+    "imagePreviewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fgsi%2F1791956434740_gha_gsi_summit_1791459527929.jpg",
+    "imageFileName": "gha_gsi_summit_1791459527929.jpg",
     "imageMimeType": "image/jpeg",
-    "imageSizeBytes": 312400,
+    "imageSizeBytes": 805147,
     "published": true,
     "history": [
+      {
+        "id": "hist-1791956435129",
+        "action": "UPDATED",
+        "publishedState": true,
+        "summary": "Modified GSI (2026) section · url=https://events.globalhealthacademy.org/gsi-summit/2026 · 1 image(s) · state=Published",
+        "timestamp": "2026-10-14T05:40:35.129Z"
+      },
       {
         "id": "h-102-2",
         "action": "PUBLISHED",
@@ -100,7 +100,7 @@
       }
     ],
     "createdAt": "2026-09-14T10:00:00.000Z",
-    "updatedAt": "2026-10-07T16:40:00.000Z"
+    "updatedAt": "2026-10-14T05:40:35.129Z"
   },
   {
     "id": "67f1a2b0c9e77a0012a40103",
@@ -111,20 +111,27 @@
     "url": "https://events.globalhealthacademy.org/course-ahs/2026",
     "images": [
       {
-        "blobPath": "./local-gha-blobs/dev/landing-sections/ahs/2026_01_gha_ahs_course_2026.jpg",
-        "previewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
-        "fileName": "gha_ahs_course_2026.jpg",
+        "blobPath": "/gha-files/ahs/1791956859495_gha_ahs_course_1791459544460.jpg",
+        "previewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fahs%2F1791956859495_gha_asi_course_1791459544460.jpg",
+        "fileName": "gha_ahs_course_1791459544460.jpg",
         "mimeType": "image/jpeg",
-        "sizeBytes": 298150
+        "sizeBytes": 963417
       }
     ],
-    "imageBlobPath": "./local-gha-blobs/dev/landing-sections/ahs/2026_01_gha_ahs_course_2026.jpg",
-    "imagePreviewUrl": "/src/assets/images/gha_asi_course_1791459544460.jpg",
-    "imageFileName": "gha_ahs_course_2026.jpg",
+    "imageBlobPath": "/gha-files/ahs/1791956859495_gha_ahs_course_1791459544460.jpg",
+    "imagePreviewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fahs%2F1791956859495_gha_asi_course_1791459544460.jpg",
+    "imageFileName": "gha_ahs_course_1791459544460.jpg",
     "imageMimeType": "image/jpeg",
-    "imageSizeBytes": 298150,
+    "imageSizeBytes": 963417,
     "published": true,
     "history": [
+      {
+        "id": "hist-1791956860353",
+        "action": "UPDATED",
+        "publishedState": true,
+        "summary": "Modified AHS (2026) section · url=https://events.globalhealthacademy.org/course-ahs/2026 · 1 image(s) · state=Published",
+        "timestamp": "2026-10-14T05:47:40.353Z"
+      },
       {
         "id": "h-103-1",
         "action": "PUBLISHED",
@@ -134,7 +141,7 @@
       }
     ],
     "createdAt": "2026-09-18T09:15:00.000Z",
-    "updatedAt": "2026-10-06T11:20:00.000Z"
+    "updatedAt": "2026-10-14T05:47:40.353Z"
   },
   {
     "id": "67f1a2b0c9e77a0012a40104",
@@ -629,20 +636,27 @@
     "url": "",
     "images": [
       {
-        "blobPath": "/gha-files/cme/1791802532928_WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
-        "previewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fcme%2F1791802532928_WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
-        "fileName": "WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
+        "blobPath": "/gha-files/cme/1791956349314_gha_cme_symposium_1791459504997.jpg",
+        "previewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fcme%2F1791956349314_gha_cme_symposium_1791459504997.jpg",
+        "fileName": "gha_cme_symposium_1791459504997.jpg",
         "mimeType": "image/jpeg",
-        "sizeBytes": 126077
+        "sizeBytes": 954132
       }
     ],
-    "imageBlobPath": "/gha-files/cme/1791802532928_WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
-    "imagePreviewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fcme%2F1791802532928_WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
-    "imageFileName": "WhatsApp_Image_2026-07-20_at_23.27.33.jpeg",
+    "imageBlobPath": "/gha-files/cme/1791956349314_gha_cme_symposium_1791459504997.jpg",
+    "imagePreviewUrl": "/api/v1/events/blobs?path=%2Fgha-files%2Fcme%2F1791956349314_gha_cme_symposium_1791459504997.jpg",
+    "imageFileName": "gha_cme_symposium_1791459504997.jpg",
     "imageMimeType": "image/jpeg",
-    "imageSizeBytes": 126077,
+    "imageSizeBytes": 954132,
     "published": true,
     "history": [
+      {
+        "id": "hist-1791956349788",
+        "action": "UPDATED",
+        "publishedState": true,
+        "summary": "Modified CME (2026) section · url=(none) · 1 image(s) · state=Published",
+        "timestamp": "2026-10-14T05:39:09.788Z"
+      },
       {
         "id": "hist-1791802533245",
         "action": "CREATED",
@@ -652,6 +666,6 @@
       }
     ],
     "createdAt": "2026-10-12T10:55:33.244Z",
-    "updatedAt": "2026-10-12T10:55:33.244Z"
+    "updatedAt": "2026-10-14T05:39:09.788Z"
   }
 ]

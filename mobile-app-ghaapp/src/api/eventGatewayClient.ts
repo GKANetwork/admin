@@ -6,6 +6,7 @@ export interface SectionImageAsset {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  url?: string;
 }
 
 export interface MobileLandingSection {

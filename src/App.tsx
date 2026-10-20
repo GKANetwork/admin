@@ -35,6 +35,11 @@ import {
   Sparkles,
   CheckCircle2,
   CircleAlert,
+  Smartphone,
+  MessageSquare,
+  BarChart3,
+  Megaphone,
+  Users,
 } from 'lucide-react';
 
 // When running locally on Mac (localhost / 127.0.0.1 / custom domain), only Landing Listing & AdminForm are shown.
@@ -50,7 +55,26 @@ type ActiveWorkspaceTab =
   | 'history-listing'
   | 'mobile-preview'
   | 'storage-db'
-  | 'java-code';
+  | 'java-code'
+  | 'feedback'
+  | 'analytics'
+  | 'marketing'
+  | 'community';
+
+const primaryMenus = [
+  { label: 'Mobile Landing Content', tab: 'history-listing' as const, icon: Smartphone },
+  { label: 'Feedback', tab: 'feedback' as const, icon: MessageSquare },
+  { label: 'Analytics', tab: 'analytics' as const, icon: BarChart3 },
+  { label: 'Marketing', tab: 'marketing' as const, icon: Megaphone },
+  { label: 'Community', tab: 'community' as const, icon: Users },
+];
+
+const comingSoonPages = {
+  feedback: { title: 'Feedback', description: 'Review and manage feedback from the GHA mobile app.' },
+  analytics: { title: 'Analytics', description: 'Explore engagement and performance for GHA mobile content.' },
+  marketing: { title: 'Marketing', description: 'Manage campaigns and communications for GHA audiences.' },
+  community: { title: 'Community', description: 'Connect with the GHA learner and clinician community.' },
+};
 
 export default function App() {
   const gatewayClient = GhaGatewayClientFactory.getClient();
@@ -241,6 +265,7 @@ export default function App() {
               sizeBytes: file.size,
               base64Data: dataUrl,
               previewUrl: dataUrl,
+              url: '',
             });
           };
           reader.onerror = reject;
@@ -266,6 +291,14 @@ export default function App() {
 
   const handleRemovePendingUpload = (idToRemove: string) => {
     setPendingUploads((prev) => prev.filter((item) => item.id !== idToRemove));
+  };
+
+  const handleRetainedImageUrlChange = (blobPath: string, url: string) => {
+    setRetainedImages((prev) => prev.map((image) => image.blobPath === blobPath ? { ...image, url } : image));
+  };
+
+  const handlePendingImageUrlChange = (id: string, url: string) => {
+    setPendingUploads((prev) => prev.map((image) => image.id === id ? { ...image, url } : image));
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -297,6 +330,7 @@ export default function App() {
           mimeType: u.mimeType,
           sizeBytes: u.sizeBytes,
           base64Data: u.base64Data,
+          url: u.url.trim(),
         })),
       };
 
@@ -528,6 +562,30 @@ export default function App() {
           )}
         </div>
       </header>
+
+      <nav aria-label="Main menu" className="sticky top-16 z-20 border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-6">
+          {primaryMenus.map(({ label, tab, icon: Icon }) => {
+            const selected = activeTab === tab || (tab === 'history-listing' && activeTab === 'admin-manager');
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                aria-current={selected ? 'page' : undefined}
+                className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-semibold transition-colors cursor-pointer ${
+                  selected
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Mobile Viewport Navigation Strip (Studio Only) */}
       {isStudio && (
@@ -770,32 +828,11 @@ export default function App() {
                       />
                     </div>
 
-                    {/* Optional Section Redirect URL Field */}
-                    <div>
-                      <label
-                        htmlFor="section-url-input"
-                        className="block text-xs font-semibold text-slate-800 mb-1.5"
-                      >
-                        4. Redirect URL (Optional — In-App Browser Link)
-                      </label>
-                      <input
-                        id="section-url-input"
-                        type="url"
-                        value={formUrl}
-                        onChange={(e) => setFormUrl(e.target.value)}
-                        placeholder="Optional: https://events.globalhealthacademy.org/... (leave blank if no link)"
-                        className="w-full px-3.5 py-2 text-sm font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900"
-                      />
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        When provided, tapping the section banner on the mobile app opens this link in the in-app browser.
-                      </p>
-                    </div>
-
                     {/* Multiple Image Upload + Paths */}
                     <div className="space-y-4 pt-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                         <label className="block text-xs font-semibold text-slate-800">
-                          5. Section Images (Multiple Images Supported)
+                          4. Section Images (Each Image Can Have Its Own Optional Link)
                         </label>
                         <span className="text-xs font-mono text-slate-500 tabular-nums">
                           {totalImagesInForm > 0
@@ -862,6 +899,14 @@ export default function App() {
                                   #{idx + 1} {img.fileName}
                                 </div>
                                 <div className="text-emerald-700">Stored in Blob Store</div>
+                                <input
+                                  type="url"
+                                  aria-label={`Optional redirect URL for ${img.fileName}`}
+                                  value={img.url || ''}
+                                  onChange={(e) => handleRetainedImageUrlChange(img.blobPath, e.target.value)}
+                                  placeholder="Optional image link URL"
+                                  className="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-[10px] text-slate-700"
+                                />
                               </div>
                             </div>
                           ))}
@@ -895,6 +940,14 @@ export default function App() {
                                   <div className="text-amber-700">
                                     New ({(up.sizeBytes / 1024).toFixed(1)} KB)
                                   </div>
+                                  <input
+                                    type="url"
+                                    aria-label={`Optional redirect URL for ${up.fileName}`}
+                                    value={up.url}
+                                    onChange={(e) => handlePendingImageUrlChange(up.id, e.target.value)}
+                                    placeholder="Optional image link URL"
+                                    className="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-[10px] text-slate-700"
+                                  />
                                 </div>
                               </div>
                             );
@@ -980,6 +1033,23 @@ export default function App() {
             onClearValidationNotice={() => setValidationSuccessNotice(null)}
           />
         )}
+
+        {activeTab in comingSoonPages && (() => {
+          const page = comingSoonPages[activeTab as keyof typeof comingSoonPages];
+          return (
+            <section className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                {activeTab === 'feedback' && <MessageSquare className="h-6 w-6" />}
+                {activeTab === 'analytics' && <BarChart3 className="h-6 w-6" />}
+                {activeTab === 'marketing' && <Megaphone className="h-6 w-6" />}
+                {activeTab === 'community' && <Users className="h-6 w-6" />}
+              </div>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{page.title}</h1>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600">{page.description}</p>
+              <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-slate-400">Coming soon</p>
+            </section>
+          );
+        })()}
 
         {/* TAB 3: DEDICATED MOBILE APP LANDING PAGE VIEW */}
         {activeTab === 'mobile-preview' && (
