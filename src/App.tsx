@@ -1153,7 +1153,7 @@ export default function App() {
                     Option B: Local Podman + SeaweedFS (qa/prod)
                   </div>
                   <p className="text-slate-600 leading-relaxed">
-                    Run <code className="font-mono">podman-compose -f backend-java/podman-compose.yml up -d</code>. Set{' '}
+                    From the code workspace, run <code className="font-mono">podman-compose -f service/podman-compose.yml up -d --build</code>. Set{' '}
                     <code className="font-mono">SPRING_PROFILES_ACTIVE=qa</code> or <code className="font-mono">prod</code>.{' '}
                     <code className="font-mono">SeaweedFsBlobStorageAdapter</code> streams images to SeaweedFS Filer (<code className="font-mono">:8888</code>) backed by a persistent local Podman volume (<code className="font-mono">gha-seaweed-data</code>).
                   </p>
@@ -1164,7 +1164,7 @@ export default function App() {
                     Option C: Save Full Codebase Locally
                   </div>
                   <p className="text-slate-600 leading-relaxed">
-                    Click the <strong>Download</strong> button in the top AI Studio toolbar (or sync to GitHub) to save the entire project—including <code className="font-mono">/backend-java/</code> and the React Desktop app—directly onto your local machine.
+                    Click the <strong>Download</strong> button in the top AI Studio toolbar (or sync to GitHub) to save the whole project, including <code className="font-mono">/service/</code>, <code className="font-mono">/ui/app/</code>, and the React Desktop app.
                   </p>
                 </div>
               </div>

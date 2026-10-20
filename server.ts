@@ -11,6 +11,33 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const CODE_ROOT = path.resolve(__dirname, '..', '..');
+const SERVICE_ROOT = path.join(CODE_ROOT, 'service');
+const MOBILE_APP_ROOT = path.join(CODE_ROOT, 'ui', 'app');
+
+function copyProjectTree(sourceDir: string, targetDir: string, excludedNames: Set<string>) {
+  if (!fs.existsSync(sourceDir)) return;
+  fs.cpSync(sourceDir, targetDir, {
+    recursive: true,
+    filter: (sourcePath) => {
+      const relativePath = path.relative(sourceDir, sourcePath);
+      const pathParts = relativePath.split(path.sep);
+      return !pathParts.some((part) => excludedNames.has(part)) && path.basename(sourcePath) !== '.env';
+    },
+  });
+}
+
+const SERVICE_EXPORT_ENTRIES = [
+  'eureka-server',
+  'gha-event-service',
+  'gha-gateway',
+  'user-service',
+  'nginx',
+  'podman-compose.yml',
+  '.env.example',
+];
+const SERVICE_EXPORT_EXCLUDES = new Set(['.git', 'target', 'logs', 'local-gha-blobs']);
+const MOBILE_EXPORT_EXCLUDES = new Set(['.git', 'node_modules', '.expo']);
 
 const SEAWEED_S3_ENDPOINT = process.env.GHA_SEAWEEDFS_S3_ENDPOINT || 'http://103.118.17.94:8333';
 const SEAWEED_S3_ACCESS_KEY = process.env.GHA_SEAWEEDFS_S3_ACCESS_KEY || 'admin';
@@ -2067,12 +2094,12 @@ async function startServer() {
       fs.mkdirSync(path.join(stagingDir, 'ui', 'app'), { recursive: true });
       fs.mkdirSync(path.join(stagingDir, 'scripts'), { recursive: true });
 
-      // 1. Backend -> service/ (gha-event-service, gha-gateway, nginx, podman-compose.yml)
-      if (fs.existsSync(path.join(__dirname, 'backend-java'))) {
-        fs.cpSync(
-          path.join(__dirname, 'backend-java'),
-          path.join(stagingDir, 'service'),
-          { recursive: true }
+      // 1. Java services and deployment files -> service/
+      for (const item of SERVICE_EXPORT_ENTRIES) {
+        copyProjectTree(
+          path.join(SERVICE_ROOT, item),
+          path.join(stagingDir, 'service', item),
+          SERVICE_EXPORT_EXCLUDES
         );
       }
 
@@ -2095,19 +2122,13 @@ async function startServer() {
           });
         }
       }
-      const nginxConf = path.join(__dirname, 'backend-java', 'nginx', 'nginx.conf');
+      const nginxConf = path.join(SERVICE_ROOT, 'nginx', 'nginx.conf');
       if (fs.existsSync(nginxConf)) {
         fs.cpSync(nginxConf, path.join(stagingDir, 'ui', 'admin', 'nginx', 'nginx.conf'));
       }
 
       // 3. Frontend Mobile App -> ui/app/
-      if (fs.existsSync(path.join(__dirname, 'mobile-app-ghaapp'))) {
-        fs.cpSync(
-          path.join(__dirname, 'mobile-app-ghaapp'),
-          path.join(stagingDir, 'ui', 'app'),
-          { recursive: true }
-        );
-      }
+      copyProjectTree(MOBILE_APP_ROOT, path.join(stagingDir, 'ui', 'app'), MOBILE_EXPORT_EXCLUDES);
 
       // 4. Sync Script -> scripts/sync-three-repos.sh
       const syncScript = path.join(__dirname, 'scripts', 'sync-three-repos.sh');
@@ -2144,12 +2165,12 @@ async function startServer() {
       fs.mkdirSync(path.join(stagingDir, 'ui', 'app'), { recursive: true });
       fs.mkdirSync(path.join(stagingDir, 'scripts'), { recursive: true });
 
-      // 1. Backend -> service/
-      if (fs.existsSync(path.join(__dirname, 'backend-java'))) {
-        fs.cpSync(
-          path.join(__dirname, 'backend-java'),
-          path.join(stagingDir, 'service'),
-          { recursive: true }
+      // 1. Java services and deployment files -> service/
+      for (const item of SERVICE_EXPORT_ENTRIES) {
+        copyProjectTree(
+          path.join(SERVICE_ROOT, item),
+          path.join(stagingDir, 'service', item),
+          SERVICE_EXPORT_EXCLUDES
         );
       }
 
@@ -2181,19 +2202,13 @@ async function startServer() {
           }
         );
       }
-      const nginxConf = path.join(__dirname, 'backend-java', 'nginx', 'nginx.conf');
+      const nginxConf = path.join(SERVICE_ROOT, 'nginx', 'nginx.conf');
       if (fs.existsSync(nginxConf)) {
         fs.cpSync(nginxConf, path.join(stagingDir, 'ui', 'admin', 'nginx', 'nginx.conf'));
       }
 
       // 3. Frontend Mobile App -> ui/app/
-      if (fs.existsSync(path.join(__dirname, 'mobile-app-ghaapp'))) {
-        fs.cpSync(
-          path.join(__dirname, 'mobile-app-ghaapp'),
-          path.join(stagingDir, 'ui', 'app'),
-          { recursive: true }
-        );
-      }
+      copyProjectTree(MOBILE_APP_ROOT, path.join(stagingDir, 'ui', 'app'), MOBILE_EXPORT_EXCLUDES);
 
       // 4. Sync Script -> scripts/sync-three-repos.sh
       const syncScript = path.join(__dirname, 'scripts', 'sync-three-repos.sh');
@@ -2231,128 +2246,154 @@ async function startServer() {
       {
         title: 'App.tsx (React Native Mobile App)',
         module: 'Repo 1: JKCBase/ghaapp (Mobile App)',
-        relativePath: 'mobile-app-ghaapp/App.tsx',
+        relativePath: 'ui/app/App.tsx',
         language: 'tsx',
       },
       {
         title: 'eventGatewayClient.ts (Mobile Gateway Client)',
         module: 'Repo 1: JKCBase/ghaapp (Mobile App)',
-        relativePath: 'mobile-app-ghaapp/src/api/eventGatewayClient.ts',
+        relativePath: 'ui/app/src/api/eventGatewayClient.ts',
         language: 'typescript',
       },
       {
         title: 'pom.xml (Java 17 Maven Project)',
         module: 'Repo 2: JKCBase/app-eventservice',
-        relativePath: 'backend-java/gha-event-service/pom.xml',
+        relativePath: 'service/gha-event-service/pom.xml',
         language: 'xml',
       },
       {
         title: 'LocalFileSystemBlobStorageAdapter.java',
         module: 'Repo 2: JKCBase/app-eventservice (Local Disk Strategy)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/blob/LocalFileSystemBlobStorageAdapter.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/blob/LocalFileSystemBlobStorageAdapter.java',
         language: 'java',
       },
       {
         title: 'SeaweedFsBlobStorageAdapter.java',
         module: 'gha-event-service (SeaweedFS Strategy)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/blob/SeaweedFsBlobStorageAdapter.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/blob/SeaweedFsBlobStorageAdapter.java',
         language: 'java',
       },
       {
         title: 'BlobStoragePort.java',
         module: 'gha-event-service (Port Interface)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/domain/port/BlobStoragePort.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/domain/port/BlobStoragePort.java',
         language: 'java',
       },
       {
         title: 'LandingSectionDocument.java',
         module: 'gha-event-service (MongoDB Document + History)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/domain/model/LandingSectionDocument.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/domain/model/LandingSectionDocument.java',
         language: 'java',
       },
       {
         title: 'LandingSectionRepository.java',
         module: 'gha-event-service (Pageable + Year Filter Repo)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/persistence/LandingSectionRepository.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/persistence/LandingSectionRepository.java',
         language: 'java',
       },
       {
         title: 'LandingSectionServiceImpl.java',
         module: 'gha-event-service (SLF4J Debug Logged Service)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/application/LandingSectionServiceImpl.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/application/LandingSectionServiceImpl.java',
         language: 'java',
       },
       {
         title: 'LandingSectionController.java',
         module: 'gha-event-service (Paginated REST API + MDC)',
         relativePath:
-          'backend-java/gha-event-service/src/main/java/com/gha/eventservice/api/LandingSectionController.java',
+          'service/gha-event-service/src/main/java/com/gha/eventservice/api/LandingSectionController.java',
         language: 'java',
       },
       {
         title: 'application-dev.yml',
         module: 'Profile: DEV (Local Disk Storage + DEBUG Logs)',
         relativePath:
-          'backend-java/gha-event-service/src/main/resources/application-dev.yml',
+          'service/gha-event-service/src/main/resources/application-dev.yml',
         language: 'yaml',
       },
       {
         title: 'application-qa.yml',
         module: 'Profile: QA (QA SeaweedFS + DEBUG Logs)',
         relativePath:
-          'backend-java/gha-event-service/src/main/resources/application-qa.yml',
+          'service/gha-event-service/src/main/resources/application-qa.yml',
         language: 'yaml',
       },
       {
         title: 'application-prod.yml',
         module: 'Profile: PROD (Hosting Raja VPS + INFO Logs)',
         relativePath:
-          'backend-java/gha-event-service/src/main/resources/application-prod.yml',
+          'service/gha-event-service/src/main/resources/application-prod.yml',
         language: 'yaml',
       },
       {
         title: 'logback-spring.xml',
         module: 'SLF4J / Logback (dev, qa, prod Profiles)',
         relativePath:
-          'backend-java/gha-event-service/src/main/resources/logback-spring.xml',
+          'service/gha-event-service/src/main/resources/logback-spring.xml',
         language: 'xml',
       },
       {
         title: 'application.yml (GHA Gateway — dev/qa/prod)',
         module: 'Repo 3: JKCBase/app-gateway (Spring Cloud Gateway)',
         relativePath:
-          'backend-java/gha-gateway/src/main/resources/application.yml',
+          'service/gha-gateway/src/main/resources/application.yml',
         language: 'yaml',
       },
       {
         title: 'GatewayCorrelationAndLoggingGlobalFilter.java',
         module: 'Repo 3: JKCBase/app-gateway (GlobalFilter + Debug Logs)',
         relativePath:
-          'backend-java/gha-gateway/src/main/java/com/gha/gateway/filter/GatewayCorrelationAndLoggingGlobalFilter.java',
+          'service/gha-gateway/src/main/java/com/gha/gateway/filter/GatewayCorrelationAndLoggingGlobalFilter.java',
         language: 'java',
       },
       {
         title: 'pom.xml (GHA Gateway)',
         module: 'Repo 3: JKCBase/app-gateway',
-        relativePath: 'backend-java/gha-gateway/pom.xml',
+        relativePath: 'service/gha-gateway/pom.xml',
         language: 'xml',
+      },
+      {
+        title: 'UserController.java (OTP and Session API)',
+        module: 'GHA User Service (OTP login, profile, session endpoints)',
+        relativePath: 'service/user-service/src/main/java/com/gha/userservice/api/UserController.java',
+        language: 'java',
+      },
+      {
+        title: 'UserLoginService.java (OTP Verification and User Persistence)',
+        module: 'GHA User Service (MongoDB userbase, OTP verification, JWT session)',
+        relativePath: 'service/user-service/src/main/java/com/gha/userservice/application/UserLoginService.java',
+        language: 'java',
+      },
+      {
+        title: 'JwtService.java (JWT Signing and Validation)',
+        module: 'GHA User Service (HS256 JWT sessions)',
+        relativePath: 'service/user-service/src/main/java/com/gha/userservice/config/JwtService.java',
+        language: 'java',
+      },
+      {
+        title: 'TwilioSmsSender.java (OTP Delivery)',
+        module: 'GHA User Service (Twilio SMS adapter)',
+        relativePath: 'service/user-service/src/main/java/com/gha/userservice/application/TwilioSmsSender.java',
+        language: 'java',
       },
       {
         title: 'podman-compose.yml',
         module: 'Podman Container Topology',
-        relativePath: 'backend-java/podman-compose.yml',
+        relativePath: 'service/podman-compose.yml',
         language: 'yaml',
       },
     ];
 
     const loaded = filesToExpose.map((f) => {
-      const fullPath = path.join(__dirname, f.relativePath);
+      const fullPath = f.relativePath.startsWith('service/') || f.relativePath.startsWith('ui/app/')
+        ? path.resolve(CODE_ROOT, f.relativePath)
+        : path.join(__dirname, f.relativePath);
       const content = fs.existsSync(fullPath)
         ? fs.readFileSync(fullPath, 'utf-8')
         : '// File not found';

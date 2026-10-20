@@ -379,7 +379,7 @@ export const JavaBackendInspector: React.FC<JavaBackendInspectorProps> = ({
                 Java 17 Microservice, Profiles (dev/qa/prod), Logback &amp; Local Storage Code
               </h3>
               <p className="text-xs text-slate-500">
-                All files are saved in <code className="font-mono">/backend-java/</code> — use Download File or the top toolbar Download ZIP to save to your local machine
+                Java services and deployment files are saved in <code className="font-mono">/service/</code> — use Download File or the top toolbar Download ZIP to save them locally
               </p>
             </div>
           </div>
