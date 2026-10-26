@@ -1,4 +1,4 @@
-export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'CONFERENCE';
+export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'CONFERENCE' | 'GHASTEP' | 'GMEDKONNECT';
 
 export const normalizeLandingCategory = (value?: string | null): LandingCategory | null => {
   switch (value?.trim().toUpperCase()) {
@@ -8,6 +8,10 @@ export const normalizeLandingCategory = (value?: string | null): LandingCategory
       return 'GSI';
     case 'AHS':
       return 'AHS';
+    case 'GHASTEP':
+      return 'GHASTEP';
+    case 'GMEDKONNECT':
+      return 'GMEDKONNECT';
     case 'CONFERENCE':
       return 'Conference';
     default:
@@ -46,6 +50,18 @@ export const LANDING_CATEGORIES: CategoryMetadata[] = [
     clinicalFocus: 'Surgical skill masterclasses, laparoscopy & fellowship courses',
   },
   {
+    code: 'GHASTEP',
+    shortLabel: 'GHASTEP',
+    fullName: 'GHA Step',
+    clinicalFocus: 'GHASTEP programs, courses, and updates',
+  },
+  {
+    code: 'GMEDKONNECT',
+    shortLabel: 'GMEDKONNECT',
+    fullName: 'GMedKonnect',
+    clinicalFocus: 'GMedKonnect programs, community, and updates',
+  },
+  {
     code: 'Conference',
     shortLabel: 'Conference',
     fullName: 'Annual Medical Conference',
@@ -59,6 +75,8 @@ export interface SectionImageAsset {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  title?: string;
+  description?: string;
   url?: string;
 }
 
@@ -77,6 +95,8 @@ export interface PendingImageUpload {
   sizeBytes: number;
   base64Data: string;
   previewUrl: string;
+  title: string;
+  description: string;
   url: string;
 }
 
@@ -132,6 +152,8 @@ export interface UpsertLandingSectionPayload {
     mimeType: string;
     sizeBytes: number;
     base64Data: string;
+    title?: string;
+    description?: string;
     url?: string;
   }>;
 }

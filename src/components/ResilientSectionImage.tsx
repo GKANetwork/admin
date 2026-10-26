@@ -28,6 +28,10 @@ export const ResilientSectionImage: React.FC<ResilientSectionImageProps> = ({
         ? 'from-emerald-950 via-slate-900 to-teal-950'
         : category === 'AHS'
         ? 'from-purple-950 via-slate-900 to-indigo-950'
+        : category === 'GHASTEP'
+        ? 'from-cyan-950 via-slate-900 to-blue-950'
+        : category === 'GMEDKONNECT'
+        ? 'from-rose-950 via-slate-900 to-pink-950'
         : 'from-amber-950 via-slate-900 to-stone-900';
 
     return (

@@ -102,7 +102,7 @@ export default function App() {
     timestamp: string;
   } | null>(null);
 
-  // Admin Form State (Supports MULTIPLE images per vertical/category + Event Year + Optional Redirect URL)
+  // Each uploaded image is an independent landing content item.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formCategory, setFormCategory] = useState<LandingCategory>(() => {
     try {
@@ -113,9 +113,6 @@ export default function App() {
     return 'Conference';
   });
   const [formEventYear, setFormEventYear] = useState<number>(2026);
-  const [formTitle, setFormTitle] = useState<string>('');
-  const [formDescription, setFormDescription] = useState<string>('');
-  const [formUrl, setFormUrl] = useState<string>('');
   const [formPublished, setFormPublished] = useState<boolean>(true);
   const [retainedImages, setRetainedImages] = useState<SectionImageAsset[]>([]);
   const [pendingUploads, setPendingUploads] = useState<PendingImageUpload[]>([]);
@@ -162,22 +159,9 @@ export default function App() {
         gatewayClient.getPublishedMobileSections(),
         gatewayClient.getDebugLogs(),
       ]);
-      // Reconcile the active feed from records the service actually reports as published.
-      const pubMap = new Map<string, LandingSectionRecord>();
-      (pubOnly || []).forEach((p) => {
-        const k = normalizeLandingCategory(p.category)?.toUpperCase() || '';
-        if (k) pubMap.set(k, p);
-      });
-      const slotOrder: Record<string, number> = { CME: 1, GSI: 2, AHS: 3, CONFERENCE: 4 };
-      const reconciledPub = Array.from(pubMap.values()).sort(
-        (a, b) =>
-          (slotOrder[(a.category || '').toUpperCase()] || 99) -
-          (slotOrder[(b.category || '').toUpperCase()] || 99)
-      );
-
       setGatewayConfig(cfg);
       setAdminSections(allAdmin);
-      setPublishedSections(reconciledPub);
+      setPublishedSections((pubOnly || []).filter((section) => section.published));
       setRecentLogs(logsData.slice(0, 10));
       setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
@@ -198,9 +182,6 @@ export default function App() {
       setFormCategory(preferredCategory);
     }
     setFormEventYear(2026);
-    setFormTitle('');
-    setFormDescription('');
-    setFormUrl('');
     setFormPublished(true);
     setRetainedImages([]);
     setPendingUploads([]);
@@ -224,13 +205,15 @@ export default function App() {
       localStorage.setItem('gha_last_category', cleanCat);
     } catch {}
     setFormEventYear(latest.eventYear || 2026);
-    setFormTitle(latest.title);
-    setFormDescription(latest.description);
-    setFormUrl(latest.url || '');
     setFormPublished(latest.published);
     setRetainedImages(
       latest.images && latest.images.length > 0
-        ? [...latest.images]
+        ? latest.images.map((image) => ({
+            ...image,
+            title: image.title || latest.title,
+            description: image.description || latest.description,
+            url: image.url || '',
+          }))
         : [
             {
               blobPath: latest.imageBlobPath,
@@ -238,6 +221,9 @@ export default function App() {
               fileName: latest.imageFileName,
               mimeType: latest.imageMimeType,
               sizeBytes: latest.imageSizeBytes,
+              title: latest.title,
+              description: latest.description,
+              url: latest.url || '',
             },
           ]
     );
@@ -265,6 +251,8 @@ export default function App() {
               sizeBytes: file.size,
               base64Data: dataUrl,
               previewUrl: dataUrl,
+              title: '',
+              description: '',
               url: '',
             });
           };
@@ -293,18 +281,27 @@ export default function App() {
     setPendingUploads((prev) => prev.filter((item) => item.id !== idToRemove));
   };
 
-  const handleRetainedImageUrlChange = (blobPath: string, url: string) => {
-    setRetainedImages((prev) => prev.map((image) => image.blobPath === blobPath ? { ...image, url } : image));
+  const handleRetainedImageChange = (blobPath: string, field: 'title' | 'description' | 'url', value: string) => {
+    setRetainedImages((prev) => prev.map((image) => image.blobPath === blobPath ? { ...image, [field]: value } : image));
   };
 
-  const handlePendingImageUrlChange = (id: string, url: string) => {
-    setPendingUploads((prev) => prev.map((image) => image.id === id ? { ...image, url } : image));
+  const handlePendingImageChange = (id: string, field: 'title' | 'description' | 'url', value: string) => {
+    setPendingUploads((prev) => prev.map((image) => image.id === id ? { ...image, [field]: value } : image));
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formDescription.trim()) {
-      showToast('error', 'Please enter a description for the mobile landing page section.');
+    const contentItems = [
+      ...retainedImages.map((image) => ({ title: image.title || '', description: image.description || '' })),
+      ...pendingUploads.map((image) => ({ title: image.title, description: image.description })),
+    ];
+    if (contentItems.length === 0) {
+      showToast('error', 'Add at least one image content item before saving.');
+      return;
+    }
+    const incompleteItem = contentItems.findIndex((item) => !item.title.trim() || !item.description.trim());
+    if (incompleteItem >= 0) {
+      showToast('error', `Add a title and description for image ${incompleteItem + 1}.`);
       return;
     }
 
@@ -315,21 +312,27 @@ export default function App() {
 
     setSubmitting(true);
     try {
+      const firstItem = contentItems[0];
       const payload: UpsertLandingSectionPayload = {
         category: formCategory,
         eventYear: savedYear,
-        title:
-          formTitle.trim() ||
-          `${catLabel} Clinical Section (${savedYear})`,
-        description: formDescription.trim(),
-        url: formUrl.trim(),
+        title: firstItem.title.trim(),
+        description: firstItem.description.trim(),
+        url: '',
         published: formPublished,
-        retainedImages,
+        retainedImages: retainedImages.map((image) => ({
+          ...image,
+          title: image.title?.trim() || '',
+          description: image.description?.trim() || '',
+          url: image.url?.trim() || '',
+        })),
         uploadedImages: pendingUploads.map((u) => ({
           fileName: u.fileName,
           mimeType: u.mimeType,
           sizeBytes: u.sizeBytes,
           base64Data: u.base64Data,
+          title: u.title.trim(),
+          description: u.description.trim(),
           url: u.url.trim(),
         })),
       };
@@ -343,8 +346,8 @@ export default function App() {
 
       const totalImages = (resultRecord.images?.length || 0) + (pendingUploads.length || 0);
       const validationSummary = isPub
-        ? `Validated 4-Card Contract: Strictly 1 live card per clinical vertical. ${catLabel} (${savedYear}) is now the active live card pinned at top. Any previous card in this vertical was automatically archived to history.`
-        : `Saved as draft in history for ${catLabel} (${savedYear}). 4-card live published slots remain untouched.`;
+        ? `Published ${catLabel} (${savedYear}) content is available in the mobile app feed.`
+        : `Saved ${catLabel} (${savedYear}) as a draft.`;
 
       setValidationSuccessNotice({
         category: resultRecord.category,
@@ -358,16 +361,13 @@ export default function App() {
       await fetchAllData();
       showToast(
         'success',
-        `VALIDATION PASSED: ${resultRecord.title} (${catLabel}) successfully saved with ${totalImages} image(s)! ${
-          resultRecord.published ? 'Live in top 4-card slots & pinned to listing.' : 'Archived in history.'
+        `${resultRecord.title} (${catLabel}) saved with ${totalImages} image(s). ${
+          resultRecord.published ? 'Published in the mobile app feed.' : 'Saved as a draft.'
         }`
       );
 
       // Clear input fields but preserve category so it DOES NOT default to CME!
       setEditingId(null);
-      setFormTitle('');
-      setFormDescription('');
-      setFormUrl('');
       setRetainedImages([]);
       setPendingUploads([]);
       setFormCategory(savedCategory);
@@ -395,7 +395,7 @@ export default function App() {
         'success',
         `${section.category} (${section.eventYear}) "${section.title}" is now ${
           nextPublished
-            ? `PUBLISHED as the active ${section.category} card on Mobile Landing Page (any previous ${section.category} card was auto-unpublished)`
+            ? 'PUBLISHED on Mobile Landing Page'
             : 'UNPUBLISHED (Removed from Mobile Landing Page)'
         }`
       );
@@ -764,30 +764,9 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Section Title & Event Year */}
-                    <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
-                      <div className="sm:col-span-4">
-                        <label
-                          htmlFor="section-title-input"
-                          className="block text-xs font-semibold text-slate-800 mb-1.5"
-                        >
-                          2. Section Heading / Title
-                        </label>
-                        <input
-                          id="section-title-input"
-                          type="text"
-                          value={formTitle}
-                          onChange={(e) => setFormTitle(e.target.value)}
-                          placeholder={`e.g., ${
-                            formCategory === 'AHS'
-                              ? 'Course / AHS Laparoscopic Masterclass'
-                              : `${formCategory} Clinical Section`
-                          }`}
-                          className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2">
+                    {/* Event Year */}
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="max-w-xs">
                         <label
                           htmlFor="section-year-select"
                           className="block text-xs font-semibold text-slate-800 mb-1.5"
@@ -809,35 +788,16 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Section Description Text Field */}
-                    <div>
-                      <label
-                        htmlFor="section-description-input"
-                        className="block text-xs font-semibold text-slate-800 mb-1.5"
-                      >
-                        3. Section Description (Rendered on Mobile Card) *
-                      </label>
-                      <textarea
-                        id="section-description-input"
-                        rows={3}
-                        required
-                        value={formDescription}
-                        onChange={(e) => setFormDescription(e.target.value)}
-                        placeholder="Describe the medical conference section, accreditation credits, course eligibility, or clinical highlights..."
-                        className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900 leading-relaxed"
-                      />
-                    </div>
-
                     {/* Multiple Image Upload + Paths */}
                     <div className="space-y-4 pt-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                         <label className="block text-xs font-semibold text-slate-800">
-                          4. Section Images (Each Image Can Have Its Own Optional Link)
+                          3. Landing Content Items (Image, Title, Description, Optional Link)
                         </label>
                         <span className="text-xs font-mono text-slate-500 tabular-nums">
                           {totalImagesInForm > 0
                             ? `${totalImagesInForm} image(s) attached`
-                            : 'Default category banner used if none uploaded'}
+                            : 'Upload at least one image to create content'}
                         </span>
                       </div>
 
@@ -854,7 +814,7 @@ export default function App() {
                               Upload one or multiple images (JPG, PNG, WebP)
                             </p>
                             <p className="text-[11px] text-slate-500 mt-0.5">
-                              Supports multiple banners with in-card swipe/carousel on mobile.
+                              Each image becomes its own vertical content card in the mobile app.
                             </p>
                           </div>
                         </div>
@@ -873,7 +833,7 @@ export default function App() {
 
                       {/* Multi-Image Thumbnail Strip */}
                       {(retainedImages.length > 0 || pendingUploads.length > 0) && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                           {retainedImages.map((img, idx) => (
                             <div
                               key={img.blobPath + idx}
@@ -894,19 +854,46 @@ export default function App() {
                               >
                                 <X className="w-3 h-3" />
                               </button>
-                              <div className="p-1.5 text-[10px] font-mono">
+                              <div className="p-3 space-y-2">
                                 <div className="text-slate-900 font-semibold truncate">
                                   #{idx + 1} {img.fileName}
                                 </div>
                                 <div className="text-emerald-700">Stored in Blob Store</div>
-                                <input
-                                  type="url"
-                                  aria-label={`Optional redirect URL for ${img.fileName}`}
-                                  value={img.url || ''}
-                                  onChange={(e) => handleRetainedImageUrlChange(img.blobPath, e.target.value)}
-                                  placeholder="Optional image link URL"
-                                  className="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-[10px] text-slate-700"
-                                />
+                                <label className="block text-[11px] font-medium text-slate-600">
+                                  Title *
+                                  <input
+                                    type="text"
+                                    required
+                                    aria-label={`Title for ${img.fileName}`}
+                                    value={img.title || ''}
+                                    onChange={(e) => handleRetainedImageChange(img.blobPath, 'title', e.target.value)}
+                                    placeholder="Content title"
+                                    className="mt-1 w-full rounded border border-slate-200 px-2.5 py-2 text-xs text-slate-700"
+                                  />
+                                </label>
+                                <label className="block text-[11px] font-medium text-slate-600">
+                                  Description *
+                                  <textarea
+                                    required
+                                    rows={3}
+                                    aria-label={`Description for ${img.fileName}`}
+                                    value={img.description || ''}
+                                    onChange={(e) => handleRetainedImageChange(img.blobPath, 'description', e.target.value)}
+                                    placeholder="Content description"
+                                    className="mt-1 w-full rounded border border-slate-200 px-2.5 py-2 text-xs text-slate-700"
+                                  />
+                                </label>
+                                <label className="block text-[11px] font-medium text-slate-600">
+                                  Image link URL (optional)
+                                  <input
+                                    type="url"
+                                    aria-label={`Optional redirect URL for ${img.fileName}`}
+                                    value={img.url || ''}
+                                    onChange={(e) => handleRetainedImageChange(img.blobPath, 'url', e.target.value)}
+                                    placeholder="Optional link URL for this content"
+                                    className="mt-1 w-full rounded border border-slate-200 px-2.5 py-2 text-xs text-slate-700"
+                                  />
+                                </label>
                               </div>
                             </div>
                           ))}
@@ -933,21 +920,48 @@ export default function App() {
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
-                                <div className="p-1.5 text-[10px] font-mono">
+                                <div className="p-3 space-y-2">
                                   <div className="text-slate-900 font-semibold truncate">
                                     #{orderNum} {up.fileName}
                                   </div>
                                   <div className="text-amber-700">
                                     New ({(up.sizeBytes / 1024).toFixed(1)} KB)
                                   </div>
-                                  <input
-                                    type="url"
-                                    aria-label={`Optional redirect URL for ${up.fileName}`}
-                                    value={up.url}
-                                    onChange={(e) => handlePendingImageUrlChange(up.id, e.target.value)}
-                                    placeholder="Optional image link URL"
-                                    className="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-[10px] text-slate-700"
-                                  />
+                                  <label className="block text-[11px] font-medium text-slate-600">
+                                    Title *
+                                    <input
+                                      type="text"
+                                      required
+                                      aria-label={`Title for ${up.fileName}`}
+                                      value={up.title}
+                                      onChange={(e) => handlePendingImageChange(up.id, 'title', e.target.value)}
+                                      placeholder="Content title"
+                                      className="mt-1 w-full rounded border border-slate-200 px-2.5 py-2 text-xs text-slate-700"
+                                    />
+                                  </label>
+                                  <label className="block text-[11px] font-medium text-slate-600">
+                                    Description *
+                                    <textarea
+                                      required
+                                      rows={3}
+                                      aria-label={`Description for ${up.fileName}`}
+                                      value={up.description}
+                                      onChange={(e) => handlePendingImageChange(up.id, 'description', e.target.value)}
+                                      placeholder="Content description"
+                                      className="mt-1 w-full rounded border border-slate-200 px-2.5 py-2 text-xs text-slate-700"
+                                    />
+                                  </label>
+                                  <label className="block text-[11px] font-medium text-slate-600">
+                                    Image link URL (optional)
+                                    <input
+                                      type="url"
+                                      aria-label={`Optional redirect URL for ${up.fileName}`}
+                                      value={up.url}
+                                      onChange={(e) => handlePendingImageChange(up.id, 'url', e.target.value)}
+                                      placeholder="Optional link URL for this content"
+                                      className="mt-1 w-full rounded border border-slate-200 px-2.5 py-2 text-xs text-slate-700"
+                                    />
+                                  </label>
                                 </div>
                               </div>
                             );
@@ -1007,9 +1021,6 @@ export default function App() {
                 <FormLiveCardPreview
                   category={formCategory}
                   eventYear={formEventYear}
-                  title={formTitle}
-                  description={formDescription}
-                  url={formUrl}
                   published={formPublished}
                   retainedImages={retainedImages}
                   pendingUploads={pendingUploads}
@@ -1066,7 +1077,7 @@ export default function App() {
             <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6 space-y-5">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Mobile Landing Page Multi-Image &amp; Publish State Contract
+                  Mobile Landing Page Multi-Image &amp; Publish State
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
                   The Mobile App queries{' '}
@@ -1080,10 +1091,10 @@ export default function App() {
 
               <div className="border-t border-slate-200 pt-4">
                 <h3 className="text-xs font-semibold text-slate-700 mb-1">
-                  4-Card Rule &amp; Historical Re-Publish Matrix ({adminSections.length} Total in event.landing_sections)
+                  Landing Content History ({adminSections.length} Total in event.landing_sections)
                 </h3>
                 <p className="text-xs text-slate-500 mb-3">
-                  At most 4 cards (1 per category: CME, GSI, Course / AHS, Conference) are live at any point. Pick any older unpublished record below and click <strong>Re-Publish</strong> to make it the active card for its category.
+                  Publish any number of records in each vertical. Use the content list to publish, unpublish, or restore records individually.
                 </p>
                 <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg max-h-[520px] overflow-y-auto">
                   {adminSections.map((sec) => (
@@ -1110,8 +1121,8 @@ export default function App() {
                         }`}
                       >
                         {sec.published
-                          ? 'Active Published (Click to Unpublish)'
-                          : `Re-Publish as Active ${sec.category} Card`}
+                          ? 'Unpublish'
+                          : 'Publish'}
                       </button>
                     </div>
                   ))}

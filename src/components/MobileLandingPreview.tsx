@@ -113,7 +113,7 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
           <span className="font-semibold text-slate-900">GHA Mobile App Landing Page</span>
         </div>
         <div className="flex items-center gap-2 font-mono tabular-nums">
-          <span>{publishedSections.length}/4 Published</span>
+          <span>{publishedSections.length} Published</span>
           <span aria-hidden="true">·</span>
           <span className="text-slate-400">{hiddenDraftCount} History</span>
           <button
@@ -351,7 +351,7 @@ export const MobileLandingPreview: React.FC<MobileLandingPreviewProps> = ({
                     Global Health Academy
                   </h3>
                   <p className="text-xs text-slate-300">
-                    CME · GSI · Course / AHS · Conferences
+                    CME · GSI · Course / AHS · GHASTEP · GMEDKONNECT · Conferences
                   </p>
                 </div>
                 <span className="text-[11px] font-mono text-emerald-400 tabular-nums">

@@ -47,9 +47,6 @@ interface LandingRecordsListingPageProps {
 
 const PAGE_SIZE = 10;
 
-// Canonical slot order for the 4 verticals
-const VERTICAL_SLOTS: LandingCategory[] = ['CME', 'GSI', 'AHS', 'Conference'];
-
 export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps> = ({
   onEditRecord,
   onTogglePublish,
@@ -75,36 +72,16 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     totalPages: 1,
     availableYears: [2026, 2025, 2024, 2023],
   });
-  const [publishedSections, setPublishedSections] = useState<LandingSectionRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // View Record Modal State
   const [viewingRecord, setViewingRecord] = useState<LandingSectionRecord | null>(null);
   const [viewingImageIndex, setViewingImageIndex] = useState<number>(0);
 
-  // Validation / Replace Modal State (4-Card Rule: strictly 1 per vertical, max 4 total)
-  const [validationModal, setValidationModal] = useState<{
-    targetRecord: LandingSectionRecord;
-    displacedRecord: LandingSectionRecord | null;
-  } | null>(null);
-
-  // 4-Card Live Mobile Feed Preview Modal State
-  const [show4CardPreview, setShow4CardPreview] = useState<boolean>(false);
-  const [previewFocusedCategory, setPreviewFocusedCategory] = useState<'ALL' | LandingCategory>('ALL');
-  const [previewDeviceMode, setPreviewDeviceMode] = useState<'iphone' | 'android'>('iphone');
-  const [previewCarouselIndices, setPreviewCarouselIndices] = useState<Record<string, number>>({});
-  const [inAppBrowserSection, setInAppBrowserSection] = useState<LandingSectionRecord | null>(null);
-
-  const isSameCat = (a?: string, b?: string): boolean => {
-    if (!a || !b) return false;
-    return a.trim().toUpperCase() === b.trim().toUpperCase();
-  };
-
   const loadPaginatedData = useCallback(async () => {
     setLoading(true);
     try {
-      const [response, publishedList] = await Promise.all([
-        gatewayClient.getPaginatedListing({
+      const response = await gatewayClient.getPaginatedListing({
           page,
           size: PAGE_SIZE,
           year: selectedYear,
@@ -116,37 +93,9 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
               : undefined,
           category: categoryFilter === 'ALL' ? undefined : categoryFilter,
           search: searchQuery.trim() || undefined,
-        }),
-        gatewayClient.getPublishedMobileSections(),
-      ]);
-
-      // Reconcile and ensure publishedList has all published records across verticals
-      const reconciledMap = new Map<string, LandingSectionRecord>();
-      (publishedList || []).forEach((p) => {
-        const catKey = p.category ? p.category.trim().toUpperCase() : '';
-        if (catKey && !reconciledMap.has(catKey)) {
-          reconciledMap.set(catKey, p);
-        }
       });
-      // Also check response.content for any published records
-      (response.content || []).forEach((rec) => {
-        if (rec.published) {
-          const catKey = rec.category ? rec.category.trim().toUpperCase() : '';
-          if (catKey) {
-            const existing = reconciledMap.get(catKey);
-            if (!existing || new Date(rec.updatedAt || 0).getTime() >= new Date(existing.updatedAt || 0).getTime()) {
-              reconciledMap.set(catKey, rec);
-            }
-          }
-        }
-      });
-      const slotOrder: Record<string, number> = { CME: 1, GSI: 2, AHS: 3, CONFERENCE: 4 };
-      const reconciledPublished = Array.from(reconciledMap.values()).sort(
-        (a, b) => (slotOrder[a.category.toUpperCase()] || 99) - (slotOrder[b.category.toUpperCase()] || 99)
-      );
 
       setPageData(response);
-      setPublishedSections(reconciledPublished);
 
       // Update viewingRecord if currently open
       if (viewingRecord) {
@@ -156,7 +105,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
         }
       }
     } catch (err) {
-      console.error('Failed to load paginated listing and published sections:', err);
+    console.error('Failed to load paginated landing sections:', err);
     } finally {
       setLoading(false);
     }
@@ -174,52 +123,9 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     loadPaginatedData();
   }, [loadPaginatedData]);
 
-  // Validation Handler: Strictly max 4 cards total and 1 per vertical
+  // Any number of records can be published in each vertical.
   const handleInitiatePublish = async (record: LandingSectionRecord) => {
-    if (record.published) {
-      // Unpublishing an existing card: directly allow
-      await onTogglePublish(record);
-      await loadPaginatedData();
-      return;
-    }
-
-    const isSameCategory = (a?: string, b?: string): boolean => {
-      if (!a || !b) return false;
-      return a.trim().toUpperCase() === b.trim().toUpperCase();
-    };
-
-    // Publishing an unpublished card: validate 4-card rule
-    const existingPublishedForVertical = publishedSections.find(
-      (p) => isSameCategory(p.category, record.category) && p.id !== record.id
-    );
-
-    if (existingPublishedForVertical) {
-      // Prompt replacement confirmation
-      setValidationModal({
-        targetRecord: record,
-        displacedRecord: existingPublishedForVertical,
-      });
-      return;
-    }
-
-    // Check if 4 cards are already published across other verticals
-    if (publishedSections.length >= 4) {
-      alert(
-        'Validation Warning: All 4 vertical slots (CME, GSI, Course / AHS, Conference) are already published. Please unpublish an existing card before publishing this card.'
-      );
-      return;
-    }
-
-    // Safe to publish directly
     await onTogglePublish(record);
-    await loadPaginatedData();
-  };
-
-  const handleConfirmReplacePublish = async () => {
-    if (!validationModal) return;
-    const { targetRecord } = validationModal;
-    setValidationModal(null);
-    await onTogglePublish(targetRecord);
     await loadPaginatedData();
   };
 
@@ -231,44 +137,20 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     return upper as LandingCategory;
   };
 
-  const getPublishedForVertical = (cat: LandingCategory): LandingSectionRecord | undefined => {
-    const fromPub = publishedSections.find((p) => isSameCat(p.category, cat));
-    if (fromPub) return fromPub;
-    const fromPagePub = pageData.content.find((r) => r.published && isSameCat(r.category, cat));
-    if (fromPagePub) return fromPagePub;
-    return undefined;
-  };
-
-  useEffect(() => {
-    if (!show4CardPreview) return;
-    const timer = window.setInterval(() => {
-      setPreviewCarouselIndices((previous) => {
-        const next = { ...previous };
-        VERTICAL_SLOTS.forEach((category) => {
-          const section = getPublishedForVertical(category);
-          const imageCount = section?.images?.length || 1;
-          if (section && imageCount > 1) {
-            next[section.id] = ((previous[section.id] || 0) + 1) % imageCount;
-          }
-        });
-        return next;
-      });
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [show4CardPreview, publishedSections]);
-
   const formatCategoryName = (cat: LandingCategory): string => {
     const normalized = normalizeCat(cat);
     return normalized === 'AHS' ? 'Course / AHS' : normalized;
   };
 
-  // 4-Card Contract sorting: The published records across verticals are ALWAYS pinned at the top
+  // Published records across verticals are always pinned at the top.
   const tableRecords = useMemo(() => {
     const slotOrder: Record<string, number> = {
       CME: 1,
       GSI: 2,
       AHS: 3,
-      CONFERENCE: 4,
+      GHASTEP: 4,
+      GMEDKONNECT: 5,
+      CONFERENCE: 6,
     };
     return [...pageData.content].sort((a, b) => {
       // 1. Published items always come first
@@ -321,19 +203,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-            <button
-              type="button"
-              onClick={() => {
-                setPreviewFocusedCategory('ALL');
-                setShow4CardPreview(true);
-              }}
-              className="px-3 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-300 hover:bg-emerald-200 rounded-lg inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Preview 4 Cards</span>
-            </button>
-            {onClearValidationNotice && (
+          {onClearValidationNotice && (
               <button
                 type="button"
                 onClick={onClearValidationNotice}
@@ -342,214 +212,35 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
               >
                 Dismiss
               </button>
-            )}
-          </div>
+          )}
         </div>
       )}
 
-      {/* =========================================================================
-          SECTION 1: THE 4 PUBLISHED SECTIONS AT TOP (1 PER VERTICAL · MAX 4)
-         ========================================================================= */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        {/* Top Header & Mobile Preview Trigger */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-              </span>
-              <h2 className="text-sm font-black tracking-wide uppercase text-white">
-                Live Published Sections · 4 Verticals Active
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {publishedSections.length} of 4 Published
-              </span>
-            </div>
-            <p className="text-xs text-slate-300">
-              Validated 4-Card Contract: Strictly 1 card per clinical vertical is live at any time. Pinned at top.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setPreviewFocusedCategory('ALL');
-                setShow4CardPreview(true);
-              }}
-              className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg inline-flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
-              title="Preview the 4 published cards live in the mobile app feed simulator"
-            >
-              <Smartphone className="w-4 h-4 stroke-[2.5]" />
-              <span>Preview 4 Selected Cards</span>
-              <span className="bg-slate-950/20 px-1.5 py-0.5 rounded text-[10px] font-mono font-black">
-                {publishedSections.length}/4
-              </span>
-            </button>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200 rounded-xl p-4">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Landing content</h2>
+          <p className="text-xs text-slate-500 mt-1">Published and draft records, grouped by vertical.</p>
         </div>
-
-        {/* 4 Vertical Slots Showcase Grid */}
-        <div className="p-6 bg-slate-50/70 border-b border-slate-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {VERTICAL_SLOTS.map((verticalKey, idx) => {
-              const publishedRec = getPublishedForVertical(verticalKey);
-              const meta = LANDING_CATEGORIES.find((c) => c.code === verticalKey);
-              const imgs =
-                publishedRec?.images && publishedRec.images.length > 0
-                  ? publishedRec.images
-                  : publishedRec
-                  ? [
-                      {
-                        blobPath: publishedRec.imageBlobPath,
-                        previewUrl: publishedRec.imagePreviewUrl,
-                        fileName: publishedRec.imageFileName,
-                        mimeType: publishedRec.imageMimeType,
-                        sizeBytes: publishedRec.imageSizeBytes,
-                      },
-                    ]
-                  : [];
-
-              return (
-                <div
-                  key={verticalKey}
-                  className={`rounded-xl border transition-all duration-200 flex flex-col justify-between overflow-hidden ${
-                    publishedRec
-                      ? 'bg-white border-emerald-300 shadow-xs hover:border-emerald-400 hover:shadow-sm'
-                      : 'bg-white/60 border-dashed border-amber-300 shadow-none'
-                  }`}
-                >
-                  {/* Slot Header */}
-                  <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black font-mono text-slate-500 uppercase">
-                        Slot {idx + 1}
-                      </span>
-                      <span className="text-[11px] font-black text-slate-900">
-                        {formatCategoryName(verticalKey)}
-                      </span>
-                    </div>
-
-                    {publishedRec ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black font-mono bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        <span>LIVE</span>
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-100 text-amber-800 border border-amber-200">
-                        EMPTY
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Slot Content */}
-                  <div className="p-3.5 space-y-2.5 flex-1 flex flex-col">
-                    {publishedRec ? (
-                      <>
-                        <div
-                          onClick={() => {
-                            setViewingRecord(publishedRec);
-                            setViewingImageIndex(0);
-                          }}
-                          className="aspect-video w-full rounded-lg overflow-hidden bg-slate-900 border border-slate-200 relative cursor-pointer shrink-0"
-                        >
-                          <ResilientSectionImage
-                            src={imgs[0]?.previewUrl}
-                            alt={publishedRec.title}
-                            category={publishedRec.category}
-                          />
-                          {imgs.length > 1 && (
-                            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/75 text-white text-[10px] font-mono inline-flex items-center gap-0.5">
-                              <Images className="w-2.5 h-2.5" />
-                              <span>{imgs.length}</span>
-                            </span>
-                          )}
-                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[10px] font-mono font-bold">
-                            {publishedRec.eventYear}
-                          </span>
-                        </div>
-
-                        <div className="flex-1 space-y-1">
-                          <h4
-                            onClick={() => {
-                              setViewingRecord(publishedRec);
-                              setViewingImageIndex(0);
-                            }}
-                            className="text-xs font-bold text-slate-900 line-clamp-1 hover:underline cursor-pointer"
-                            title={publishedRec.title}
-                          >
-                            {publishedRec.title}
-                          </h4>
-                          <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
-                            {publishedRec.description}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center py-6 px-2 space-y-1">
-                        <AlertTriangle className="w-5 h-5 text-amber-500" />
-                        <p className="text-xs font-semibold text-slate-700">
-                          No Active {formatCategoryName(verticalKey)} Card
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          {meta?.clinicalFocus || 'Select an item from the table below to publish.'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Slot Footer Actions */}
-                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
-                    {publishedRec ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPreviewFocusedCategory(publishedRec.category);
-                            setShow4CardPreview(true);
-                          }}
-                          className="px-2 py-1 font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded inline-flex items-center gap-1 cursor-pointer transition-colors"
-                          title="Preview in Mobile simulator"
-                        >
-                          <Smartphone className="w-3 h-3" />
-                          <span>Preview</span>
-                        </button>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => onEditRecord(publishedRec)}
-                            className="px-2 py-1 font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded inline-flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Pencil className="w-3 h-3" />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleInitiatePublish(publishedRec)}
-                            className="px-2 py-1 font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded inline-flex items-center gap-1 cursor-pointer transition-colors"
-                            title="Unpublish this vertical card"
-                          >
-                            <EyeOff className="w-3 h-3" />
-                            <span>Unpublish</span>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-[11px] font-mono text-slate-400 italic mx-auto">
-                        Awaiting publication
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <span>Filter by vertical</span>
+          <select
+            value={categoryFilter}
+            onChange={(event) => {
+              setPage(0);
+              setCategoryFilter(event.target.value as 'ALL' | LandingCategory);
+            }}
+            className="min-w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500"
+          >
+            <option value="ALL">All verticals</option>
+            {LANDING_CATEGORIES.map((category) => (
+              <option key={category.code} value={category.code}>{category.shortLabel}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {/* =========================================================================
-          SECTION 2: ALL RECORDS TABLE (WITH PUBLISHED ROWS PINNED AT TOP)
+          LANDING RECORDS TABLE
          ========================================================================= */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
@@ -703,7 +394,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                             title={
                               record.published
                                 ? 'Unpublish this record from the Mobile Landing Page'
-                                : `Publish this ${record.eventYear} ${formatCategoryName(record.category)} record (Validates 4-card rule)`
+                                : `Publish this ${record.eventYear} ${formatCategoryName(record.category)} record (validates one-per-category rule)`
                             }
                             className={`px-2.5 py-1 text-[11px] font-bold rounded-md inline-flex items-center gap-1 transition-colors cursor-pointer ${
                               record.published
@@ -826,6 +517,9 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
             {selectedYear !== undefined && (
               <span> · Filtered by Year {selectedYear}</span>
             )}
+            {categoryFilter !== 'ALL' && (
+              <span> · Filtered by Vertical {formatCategoryName(categoryFilter)}</span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 font-mono text-xs tabular-nums">
@@ -871,463 +565,6 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
           </div>
         </div>
       </div>
-
-      {/* =========================================================================
-          SECTION 3: VALIDATION CONFIRMATION MODAL (1 PER VERTICAL RULE)
-         ========================================================================= */}
-      {validationModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <h3 className="text-sm font-bold text-white">
-                  Vertical Validation · 4-Card Rule
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setValidationModal(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs">
-              <p className="text-slate-700 leading-relaxed">
-                The mobile app enforces a strict <strong>4-Card Limit</strong> with <strong>exactly 1 published card per clinical vertical</strong>.
-              </p>
-
-              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
-                <div className="font-bold text-amber-900 flex items-center gap-1.5">
-                  <span>Current Active Card for Vertical:</span>
-                  <span className="font-mono bg-amber-200 px-1.5 py-0.5 rounded text-amber-950">
-                    {formatCategoryName(validationModal.targetRecord.category)}
-                  </span>
-                </div>
-                {validationModal.displacedRecord && (
-                  <div className="text-amber-800 text-xs pl-2 border-l-2 border-amber-400">
-                    <p className="font-semibold text-slate-900">
-                      {validationModal.displacedRecord.title} ({validationModal.displacedRecord.eventYear})
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Will be automatically unpublished and moved to historical records.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
-                <span className="font-bold text-emerald-900">New Card to Publish as Active:</span>
-                <p className="font-semibold text-slate-900">
-                  {validationModal.targetRecord.title} ({validationModal.targetRecord.eventYear})
-                </p>
-              </div>
-
-              <p className="text-slate-500 text-[11px]">
-                Do you want to proceed and replace the active card for{' '}
-                <strong>{formatCategoryName(validationModal.targetRecord.category)}</strong>?
-              </p>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setValidationModal(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReplacePublish}
-                className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Replace &amp; Publish Active Card</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          SECTION 4: LIVE 4-CARD MOBILE FEED PREVIEW MODAL
-         ========================================================================= */}
-      {show4CardPreview && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-slate-900 text-white border border-slate-700 rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col my-auto max-h-[92vh]">
-            {/* Modal Top Bar */}
-            <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
-                  <Smartphone className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">
-                    Live Mobile App Preview · 4 Published Cards Feed
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Exact representation of the landing feed delivered to mobile clients via GHA Gateway.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {/* Device Frame Toggle */}
-                <div className="bg-slate-800 p-1 rounded-lg flex items-center gap-1 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewDeviceMode('iphone')}
-                    className={`px-2.5 py-1 rounded font-semibold cursor-pointer transition-colors ${
-                      previewDeviceMode === 'iphone'
-                        ? 'bg-slate-700 text-white'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    iPhone 16
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewDeviceMode('android')}
-                    className={`px-2.5 py-1 rounded font-semibold cursor-pointer transition-colors ${
-                      previewDeviceMode === 'android'
-                        ? 'bg-slate-700 text-white'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Pixel 9
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShow4CardPreview(false)}
-                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body: Phone Frame & Sidebar Breakdown */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-900 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center justify-center">
-              {/* Interactive Phone Simulator */}
-              <div className="lg:col-span-7 flex justify-center">
-                <div
-                  className={`w-[360px] h-[640px] bg-slate-950 rounded-[48px] p-3 shadow-2xl border-4 ${
-                    previewDeviceMode === 'iphone'
-                      ? 'border-slate-700 ring-1 ring-slate-600'
-                      : 'border-slate-800 ring-1 ring-slate-700 rounded-[40px]'
-                  } flex flex-col relative`}
-                >
-                  {/* Dynamic Island / Punch Hole */}
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
-                    {previewDeviceMode === 'iphone' ? (
-                      <div className="w-24 h-5 bg-black rounded-full border border-slate-800/60" />
-                    ) : (
-                      <div className="w-3.5 h-3.5 bg-black rounded-full border border-slate-800" />
-                    )}
-                  </div>
-
-                  {/* Phone Screen Viewport */}
-                  <div className="w-full h-full bg-slate-50 text-slate-900 rounded-[38px] overflow-hidden flex flex-col relative">
-                    {/* Status Bar */}
-                    <div className="h-10 px-6 flex items-center justify-between text-[11px] font-semibold text-slate-900 bg-white/80 backdrop-blur-xs select-none shrink-0 z-20">
-                      <span>9:41</span>
-                      <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                        <span>5G</span>
-                        <div className="w-5 h-2.5 border border-slate-900 rounded-xs p-0.5 flex items-center">
-                          <div className="w-full h-full bg-slate-900 rounded-2xs" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* App Bar */}
-                    <div className="px-4 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-slate-900 text-white font-black text-xs flex items-center justify-center">
-                          G
-                        </div>
-                        <div>
-                          <div className="text-xs font-black tracking-tight text-slate-900 leading-none">
-                            GLOBAL HEALTH
-                          </div>
-                          <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-0.5">
-                            ACADEMY EVENTS
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                        {publishedSections.length} Live Cards
-                      </span>
-                    </div>
-
-                    {/* Category Filter Chips inside Phone */}
-                    <div className="px-3 py-2 bg-white border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewFocusedCategory('ALL')}
-                        className={`px-2.5 py-1 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors cursor-pointer ${
-                          previewFocusedCategory === 'ALL'
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        ALL ({publishedSections.length})
-                      </button>
-                      {VERTICAL_SLOTS.map((catKey) => {
-                        const hasPublished = publishedSections.some((p) => isSameCat(p.category, catKey));
-                        return (
-                          <button
-                            key={catKey}
-                            type="button"
-                            onClick={() => setPreviewFocusedCategory(catKey)}
-                            className={`px-2 py-1 text-[10px] font-bold rounded-full whitespace-nowrap transition-colors cursor-pointer ${
-                              previewFocusedCategory === catKey
-                                ? 'bg-slate-900 text-white'
-                                : hasPublished
-                                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                : 'bg-slate-100 text-slate-400 opacity-60'
-                            }`}
-                          >
-                            {formatCategoryName(catKey)}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Scrollable Feed of 4 Published Cards */}
-                    <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
-                      {VERTICAL_SLOTS.filter(
-                        (catKey) =>
-                          previewFocusedCategory === 'ALL' || isSameCat(catKey, previewFocusedCategory)
-                      ).map((catKey) => {
-                        const section = getPublishedForVertical(catKey);
-                        if (!section) return null;
-                          const imgs =
-                            section.images && section.images.length > 0
-                              ? section.images
-                              : [
-                                  {
-                                    blobPath: section.imageBlobPath,
-                                    previewUrl: section.imagePreviewUrl,
-                                    fileName: section.imageFileName,
-                                    mimeType: section.imageMimeType,
-                                    sizeBytes: section.imageSizeBytes,
-                                  },
-                                ];
-                          const currImgIdx = previewCarouselIndices[section.id] || 0;
-                          const activeImg = imgs[currImgIdx % imgs.length];
-
-                          return (
-                            <div
-                              key={section.id}
-                              className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs"
-                            >
-                              {/* Card Image Banner & Carousel */}
-                              <div
-                                className="aspect-video w-full relative bg-slate-900 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                  const targetUrl = activeImg.url?.trim() || section.url?.trim();
-                                  if (targetUrl) setInAppBrowserSection({ ...section, url: targetUrl });
-                                }}
-                              >
-                                <ResilientSectionImage
-                                  src={activeImg.previewUrl}
-                                  alt={section.title}
-                                  category={section.category}
-                                />
-
-                                {/* Carousel Controls if Multi-image */}
-                                {imgs.length > 1 && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewCarouselIndices((prev) => ({
-                                          ...prev,
-                                          [section.id]:
-                                            (currImgIdx - 1 + imgs.length) % imgs.length,
-                                        }));
-                                      }}
-                                      className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/90 cursor-pointer"
-                                    >
-                                      <ChevronLeft className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewCarouselIndices((prev) => ({
-                                          ...prev,
-                                          [section.id]: (currImgIdx + 1) % imgs.length,
-                                        }));
-                                      }}
-                                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/90 cursor-pointer"
-                                    >
-                                      <ChevronRight className="w-3.5 h-3.5" />
-                                    </button>
-                                    <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/75 text-white text-[9px] font-mono">
-                                      {currImgIdx + 1}/{imgs.length}
-                                    </div>
-                                  </>
-                                )}
-
-                                <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-900/90 text-white border border-white/20">
-                                    {formatCategoryName(section.category)}
-                                  </span>
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/90 text-slate-900">
-                                    {section.eventYear}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Card Content */}
-                              <div className="p-3.5 space-y-2">
-                                <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug">
-                                  {section.title}
-                                </h4>
-                                <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
-                                  {section.description}
-                                </p>
-
-                                <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-100">
-                                  {(activeImg.url || section.url) ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => setInAppBrowserSection({
-                                        ...section,
-                                        url: activeImg.url?.trim() || section.url,
-                                      })}
-                                      className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                                    >
-                                      <span>Explore Event</span>
-                                      <ExternalLink className="w-3 h-3" />
-                                    </button>
-                                  ) : (
-                                    <span className="text-[10px] font-mono text-slate-400 italic">
-                                      Clinical Overview
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                      {publishedSections.length === 0 && (
-                        <div className="py-16 text-center text-slate-500 text-xs">
-                          No cards currently published in the mobile feed.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* In-Phone Browser Overlay */}
-                    {inAppBrowserSection && (
-                      <div className="absolute inset-0 bg-white z-40 flex flex-col">
-                        <div className="px-3 py-2 bg-slate-900 text-white flex items-center justify-between text-xs shrink-0">
-                          <div className="flex items-center gap-1.5 truncate text-[11px]">
-                            <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
-                            <span className="truncate">{inAppBrowserSection.url}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setInAppBrowserSection(null)}
-                            className="p-1 text-slate-400 hover:text-white rounded cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="p-4 flex-1 overflow-y-auto space-y-3 text-xs text-slate-800">
-                          <h3 className="font-bold text-sm text-slate-900">
-                            {inAppBrowserSection.title}
-                          </h3>
-                          <p className="text-slate-600">{inAppBrowserSection.description}</p>
-                          <div className="p-3 bg-slate-100 rounded-lg text-[11px] font-mono break-all">
-                            Target Event Portal URL: {inAppBrowserSection.url}
-                          </div>
-                          <p className="text-[11px] text-slate-500 italic">
-                            (In-App Browser loads this URL natively inside the mobile app webview wrapper)
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Sidebar: 4-Vertical Architecture Breakdown */}
-              <div className="lg:col-span-5 space-y-4">
-                <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200">
-                      4 Published Cards Status
-                    </span>
-                    <span className="text-[11px] font-mono font-bold text-emerald-400">
-                      {publishedSections.length} of 4 Slots Filled
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {VERTICAL_SLOTS.map((catKey, i) => {
-                      const pub = getPublishedForVertical(catKey);
-                      return (
-                        <div
-                          key={catKey}
-                          onClick={() => setPreviewFocusedCategory(catKey)}
-                          className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            pub
-                              ? 'bg-slate-900/90 border-slate-600 hover:border-emerald-400'
-                              : 'bg-slate-900/40 border-slate-700/60 opacity-60'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-200">
-                              {i + 1}. {formatCategoryName(catKey)}
-                            </span>
-                            {pub ? (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
-                                {pub.eventYear}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-mono text-amber-400">
-                                Vacant
-                              </span>
-                            )}
-                          </div>
-                          {pub && (
-                            <p className="text-[11px] text-slate-400 truncate mt-1">
-                              {pub.title}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-800/40 border border-slate-700/60 rounded-xl space-y-2 text-xs text-slate-400">
-                  <div className="flex items-center gap-1.5 text-slate-200 font-semibold">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Instant Real-Time Sync</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed">
-                    Changes made to the published records in the GHA Admin area update the Gateway endpoint{' '}
-                    <code className="text-emerald-300 font-mono text-[10px]">
-                      /api/v1/events/landing-sections/published
-                    </code>{' '}
-                    instantly for both iOS and Android clients.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* =========================================================================
           SECTION 5: FULL RECORD DETAIL VIEW MODAL
