@@ -1,3 +1,4 @@
+import {useEventAccess} from './AuthGate';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -77,6 +78,7 @@ const comingSoonPages = {
 };
 
 export default function App() {
+  const {can} = useEventAccess();
   const gatewayClient = GhaGatewayClientFactory.getClient();
 
   const isStudio = isAiStudioEnvironment();
@@ -113,7 +115,7 @@ export default function App() {
     return 'Conference';
   });
   const [formEventYear, setFormEventYear] = useState<number>(2026);
-  const [formPublished, setFormPublished] = useState<boolean>(true);
+  const [formPublished, setFormPublished] = useState<boolean>(can('events.publish'));
   const [retainedImages, setRetainedImages] = useState<SectionImageAsset[]>([]);
   const [pendingUploads, setPendingUploads] = useState<PendingImageUpload[]>([]);
   const [copyingSyncCmd, setCopyingSyncCmd] = useState<boolean>(false);
@@ -157,7 +159,7 @@ export default function App() {
         gatewayClient.getGatewayConfig(),
         gatewayClient.getAllAdminSections(),
         gatewayClient.getPublishedMobileSections(),
-        gatewayClient.getDebugLogs(),
+        can('events.config') ? gatewayClient.getDebugLogs() : Promise.resolve([]),
       ]);
       setGatewayConfig(cfg);
       setAdminSections(allAdmin);
@@ -166,7 +168,7 @@ export default function App() {
       setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       console.error(err);
-      showToast('error', 'Failed to synchronize with GHA Gateway / GHA Event Service');
+      showToast('error', 'Failed to synchronize with GHA Gateway / GHA Admin Service');
     } finally {
       setLoading(false);
     }
@@ -182,7 +184,7 @@ export default function App() {
       setFormCategory(preferredCategory);
     }
     setFormEventYear(2026);
-    setFormPublished(true);
+    setFormPublished(can('events.publish'));
     setRetainedImages([]);
     setPendingUploads([]);
     if (fileInputRef.current) {
@@ -191,7 +193,8 @@ export default function App() {
   };
 
   const handleSelectSectionForEdit = async (section: LandingSectionRecord) => {
-    setActiveTab('admin-manager');
+    if (!can('events.update')) { showToast('error','You do not have edit permission.'); return; }
+    if (can('events.create')) setActiveTab('admin-manager');
     let latest = section;
     try {
       latest = await gatewayClient.getSectionById(section.id);
@@ -337,6 +340,7 @@ export default function App() {
         })),
       };
 
+      if (!can(editingId ? 'events.update' : 'events.create')) throw new Error('You do not have permission to save this content.');
       let resultRecord: LandingSectionRecord;
       if (editingId) {
         resultRecord = await gatewayClient.updateLandingSection(editingId, payload);
@@ -387,6 +391,7 @@ export default function App() {
   };
 
   const handleTogglePublish = async (section: LandingSectionRecord) => {
+    if (!can('events.publish')) { showToast('error','You do not have publish permission.'); return; }
     const nextPublished = !section.published;
     try {
       await gatewayClient.togglePublishStatus(section.id, nextPublished);
@@ -408,6 +413,7 @@ export default function App() {
   };
 
   const handleDeleteSection = async (section: LandingSectionRecord) => {
+    if (!can('events.delete')) { showToast('error','You do not have delete permission.'); return; }
     try {
       await gatewayClient.deleteLandingSection(section.id);
       if (editingId === section.id) {
@@ -551,7 +557,7 @@ export default function App() {
               type="button"
               onClick={() => {
                 resetForm(formCategory);
-                setActiveTab('admin-manager');
+                if (can('events.create')) setActiveTab('admin-manager');
                 formContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
               }}
               className="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -692,7 +698,7 @@ export default function App() {
         )}
 
         {/* TAB 1: ADMIN FORM FOR CREATION / EDITING WITH LIVE RIGHT-SIDE PREVIEW */}
-        {activeTab === 'admin-manager' && (
+        {activeTab === 'admin-manager' && (can('events.create') || can('events.update')) && (
           <div className="space-y-6">
             {/* 2-Column Responsive Form & Live Preview: Form (Left 7 cols) & Card Preview (Right 5 cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -976,6 +982,7 @@ export default function App() {
                         <button
                           type="button"
                           role="switch"
+                          disabled={!can('events.publish')}
                           aria-checked={formPublished}
                           onClick={() => setFormPublished((prev) => !prev)}
                           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
@@ -1037,7 +1044,7 @@ export default function App() {
             onTogglePublish={handleTogglePublish}
             onDeleteRecord={handleDeleteSection}
             onCreateClick={() => {
-              setActiveTab('admin-manager');
+              if (can('events.create')) setActiveTab('admin-manager');
             }}
             refreshTrigger={refreshTrigger}
             validationNotice={validationSuccessNotice}
@@ -1113,6 +1120,7 @@ export default function App() {
                       </div>
                       <button
                         type="button"
+                        disabled={!can('events.publish')}
                         onClick={() => handleTogglePublish(sec)}
                         className={`px-3 py-1.5 font-semibold rounded-md shrink-0 cursor-pointer transition-colors ${
                           sec.published

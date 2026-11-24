@@ -1,3 +1,4 @@
+import {installAuthGateway} from './authGateway';
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
@@ -29,7 +30,7 @@ function copyProjectTree(sourceDir: string, targetDir: string, excludedNames: Se
 
 const SERVICE_EXPORT_ENTRIES = [
   'eureka-server',
-  'gha-event-service',
+  'gha-admin-service',
   'gha-gateway',
   'user-service',
   'nginx',
@@ -226,7 +227,7 @@ async function getObjectFromSeaweedS3(
   };
 }
 
-export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference';
+export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'LANDING_CONTENT';
 export type GhaProfile = 'dev' | 'qa' | 'prod';
 export type BlobProviderType = 'local-fs' | 'seaweedfs';
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
@@ -334,7 +335,7 @@ class GhaStructuredLogger {
   constructor() {
     const logDir = path.join(__dirname, 'logs');
     fs.mkdirSync(logDir, { recursive: true });
-    this.logFilePath = path.join(logDir, 'gha-event-service.log');
+    this.logFilePath = path.join(logDir, 'gha-admin-service.log');
   }
 
   log(
@@ -688,6 +689,7 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
     });
     let publishedCount = 0;
     for (const doc of sorted) {
+      if (doc.category === 'LANDING_CONTENT') continue;
       if (doc.published) {
         if (seenPublishedCategories.has(doc.category) || publishedCount >= 4) {
           doc.published = false;
@@ -1138,6 +1140,7 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
 
   findAll(): LandingSectionDocument[] {
     const slotOrder: Record<LandingCategory, number> = {
+      LANDING_CONTENT: 5,
       CME: 1,
       GSI: 2,
       AHS: 3,
@@ -1228,7 +1231,7 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
         const normQuery = upperQuery === 'CONFERENCE' ? 'Conference' : (upperQuery === 'ASI' || upperQuery === 'AHS' ? 'AHS' : upperQuery);
         if (normCat !== normQuery) continue;
       }
-      if (!seen.has(normCat)) {
+      if (normCat === 'LANDING_CONTENT' || !seen.has(normCat)) {
         seen.add(normCat);
         result.push(doc);
       }
@@ -1265,7 +1268,7 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
 
     this.documents = this.documents.map((doc) => {
       const norm = this.normalizeDoc(doc);
-      if (norm.category === category && norm.published && norm.id !== excludeId) {
+      if (category !== 'LANDING_CONTENT' && norm.category === category && norm.published && norm.id !== excludeId) {
         const autoUnpubEntry: SectionAuditHistoryEntry = {
           id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           action: 'UNPUBLISHED',
@@ -1317,10 +1320,11 @@ class MongoEventDbRepositoryAdapter implements LandingSectionRepositoryPort {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  await installAuthGateway(app);
 
   const logger = new GhaStructuredLogger();
   const blobStorage: BlobStoragePort = new MultiProfileBlobStorageStrategy(logger);
@@ -1334,7 +1338,7 @@ async function startServer() {
     const activeCfg = blobStorage.getActiveProfileConfig();
 
     res.setHeader('X-GHA-Gateway', 'gha-gateway:8080');
-    res.setHeader('X-GHA-Upstream-Service', 'gha-event-service:8082');
+    res.setHeader('X-GHA-Upstream-Service', 'gha-admin-service:8082');
     res.setHeader('X-GHA-Active-Profile', activeCfg.profile);
     res.setHeader('X-GHA-Correlation-Id', corrId);
 
@@ -1344,36 +1348,37 @@ async function startServer() {
         corrId,
         'DEBUG',
         'c.g.g.f.GatewayRouteLoggingFilter',
-        `Routed ${req.method} /api/v1/events${req.path} -> lb://GHA-EVENT-SERVICE`
+        `Routed ${req.method} /api/v1/events${req.path} -> lb://GHA-ADMIN-SERVICE`
       );
     }
     next();
   });
 
-  app.get('/api/v1/events/config', (_req: Request, res: Response) => {
+  app.get('/api/v1/events/config', (req: Request, res: Response) => {
+    const privileged = (req as Request & {employeePermissions?:string[]}).employeePermissions?.includes('events.config') || false;
     const activeCfg = blobStorage.getActiveProfileConfig();
     const stats = blobStorage.getPhysicalStorageStats();
     res.json({
       gatewayName: 'gha-gateway',
-      serviceName: 'gha-event-service',
+      serviceName: 'gha-admin-service',
       javaVersion: '17 (Eclipse Temurin)',
       activeProfile: activeCfg.profile,
       availableProfiles: ['dev', 'qa', 'prod'],
       blobProvider: activeCfg.blobProvider,
       mongoDatabase: activeCfg.mongoDatabase,
-      mongoUri: activeCfg.mongoUri,
+      mongoUri: privileged ? activeCfg.mongoUri.replace(/(mongodb(?:\+srv)?:\/\/)([^/]*@)/, '$1[redacted]@') : 'Restricted',
       mongoCollection: 'landing_sections',
       blobStoreProvider:
         activeCfg.blobProvider === 'local-fs'
           ? 'LocalFileSystemBlobStorageAdapter (local-fs)'
           : 'SeaweedFsBlobStorageAdapter (seaweedfs)',
-      blobStoreBasePath: activeCfg.blobStoreBasePath,
-      seaweedFilerUrl: activeCfg.seaweedFilerUrl,
+      blobStoreBasePath: privileged ? activeCfg.blobStoreBasePath : 'Restricted',
+      seaweedFilerUrl: privileged ? activeCfg.seaweedFilerUrl : 'Restricted',
       logLevel: activeCfg.logLevel,
       blobStoreEnvVar: 'GHA_BLOB_STORE_PATH',
       blobStoreProperty: 'gha.blob-store.base-path',
-      localPhysicalBlobDir: stats.physicalRootDir,
-      localMongoCollectionFile: path.join(
+      localPhysicalBlobDir: privileged ? stats.physicalRootDir : 'Restricted',
+      localMongoCollectionFile: !privileged ? 'Restricted' : path.join(
         __dirname,
         'data',
         'mongodb_event_db',
@@ -1423,11 +1428,11 @@ async function startServer() {
     res.status(204).send();
   });
 
-  // Live Upstream Proxy to Spring Boot gha-event-service (http://localhost:8082) -> MongoDB (event.landing_sections)
-  // When gha-event-service is running on :8082, all /api/v1/events/landing-sections* requests are forwarded to it.
-  // If gha-event-service returns an error, it is logged as ERROR and returned to the browser console.
+  // Live Upstream Proxy to Spring Boot gha-admin-service (http://localhost:8082) -> MongoDB (event.landing_sections)
+  // When gha-admin-service is running on :8082, all /api/v1/events/landing-sections* requests are forwarded to it.
+  // If gha-admin-service returns an error, it is logged as ERROR and returned to the browser console.
   // If :8082 is not running (e.g., in cloud preview), logs a clear WARN and falls back to the embedded preview store.
-  const UPSTREAM_EVENT_SERVICE = process.env.GHA_EVENT_SERVICE_URL || 'http://localhost:8082';
+  const UPSTREAM_ADMIN_SERVICE = process.env.GHA_ADMIN_SERVICE_URL || 'http://localhost:8082';
   let loggedOfflineNotice = false;
 
   app.use('/api/v1/events/landing-sections', async (req: Request, res: Response, next) => {
@@ -1435,7 +1440,7 @@ async function startServer() {
     const activeCfg = blobStorage.getActiveProfileConfig();
     // Normalize target URL (e.g. ?category=Conference -> ?category=CONFERENCE)
     let sanitizedOriginalUrl = req.originalUrl.replace(/category=Conference\b/gi, 'category=CONFERENCE');
-    const targetUrl = `${UPSTREAM_EVENT_SERVICE}${sanitizedOriginalUrl}`;
+    const targetUrl = `${UPSTREAM_ADMIN_SERVICE}${sanitizedOriginalUrl}`;
 
     try {
       const controller = new AbortController();
@@ -1461,6 +1466,7 @@ async function startServer() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
           'X-Correlation-Id': corrId,
+          ...(req.headers.authorization ? {Authorization:req.headers.authorization} : {}),
         },
         body: isBodyMethod ? JSON.stringify(forwardedBody ?? {}) : undefined,
         signal: controller.signal,
@@ -1492,7 +1498,7 @@ async function startServer() {
         res
           .status(upstreamRes.status)
           .type('application/json')
-          .send(rawText || JSON.stringify({ error: `HTTP ${upstreamRes.status} from gha-event-service` }));
+          .send(rawText || JSON.stringify({ error: `HTTP ${upstreamRes.status} from gha-admin-service` }));
         return;
       }
 
@@ -1513,8 +1519,11 @@ async function startServer() {
           corrId,
           'WARN',
           'c.g.g.f.GatewayRouteLoggingFilter',
-          `[SPRING-BOOT-OFFLINE] Cannot connect to ${UPSTREAM_EVENT_SERVICE} (${errMsg}) — using embedded preview store. Start gha-event-service on :8082 to read/write live MongoDB (event.landing_sections).`
+          `[SPRING-BOOT-OFFLINE] Cannot connect to ${UPSTREAM_ADMIN_SERVICE} (${errMsg}) — using embedded preview store. Start gha-admin-service on :8082 to read/write live MongoDB (event.landing_sections).`
         );
+      }
+      if (req.method !== 'GET') {
+        res.status(503).json({message:'Event service is unavailable; changes were not saved.'}); return;
       }
       next();
     }
@@ -1635,6 +1644,7 @@ async function startServer() {
       }
 
       const defaultTitles: Record<LandingCategory, string> = {
+        LANDING_CONTENT: 'Landing Content',
         CME: 'Continuing Medical Education (CME) Clinical Program',
         GSI: 'Gastrointestinal Society of India (GSI) Scientific Section',
         AHS: 'Course / AHS Surgical & Clinical Track',
@@ -1668,6 +1678,7 @@ async function startServer() {
 
       if (storedImages.length === 0) {
         const fallbackMap: Record<LandingCategory, string> = {
+          LANDING_CONTENT: '/src/assets/images/gha_annual_conference_1791459556638.jpg',
           CME: '/src/assets/images/gha_cme_symposium_1791459504997.jpg',
           GSI: '/src/assets/images/gha_gsi_summit_1791459527929.jpg',
           AHS: '/src/assets/images/gha_asi_course_1791459544460.jpg',
@@ -2239,7 +2250,7 @@ async function startServer() {
     const filesToExpose = [
       {
         title: 'sync-three-repos.sh (GitHub 3-Repo Push Script)',
-        module: 'GitHub Sync: JKCBase/ghaapp · app-eventservice · app-admin',
+        module: 'GitHub Sync: JKCBase/ghaapp · gha-admin-service · app-admin',
         relativePath: 'scripts/sync-three-repos.sh',
         language: 'bash',
       },
@@ -2257,85 +2268,85 @@ async function startServer() {
       },
       {
         title: 'pom.xml (Java 17 Maven Project)',
-        module: 'Repo 2: JKCBase/app-eventservice',
-        relativePath: 'service/gha-event-service/pom.xml',
+        module: 'Repo 2: JKCBase/gha-admin-service',
+        relativePath: 'service/gha-admin-service/pom.xml',
         language: 'xml',
       },
       {
         title: 'LocalFileSystemBlobStorageAdapter.java',
-        module: 'Repo 2: JKCBase/app-eventservice (Local Disk Strategy)',
+        module: 'Repo 2: JKCBase/gha-admin-service (Local Disk Strategy)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/blob/LocalFileSystemBlobStorageAdapter.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/infrastructure/blob/LocalFileSystemBlobStorageAdapter.java',
         language: 'java',
       },
       {
         title: 'SeaweedFsBlobStorageAdapter.java',
-        module: 'gha-event-service (SeaweedFS Strategy)',
+        module: 'gha-admin-service (SeaweedFS Strategy)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/blob/SeaweedFsBlobStorageAdapter.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/infrastructure/blob/SeaweedFsBlobStorageAdapter.java',
         language: 'java',
       },
       {
         title: 'BlobStoragePort.java',
-        module: 'gha-event-service (Port Interface)',
+        module: 'gha-admin-service (Port Interface)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/domain/port/BlobStoragePort.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/domain/port/BlobStoragePort.java',
         language: 'java',
       },
       {
         title: 'LandingSectionDocument.java',
-        module: 'gha-event-service (MongoDB Document + History)',
+        module: 'gha-admin-service (MongoDB Document + History)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/domain/model/LandingSectionDocument.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/domain/model/LandingSectionDocument.java',
         language: 'java',
       },
       {
         title: 'LandingSectionRepository.java',
-        module: 'gha-event-service (Pageable + Year Filter Repo)',
+        module: 'gha-admin-service (Pageable + Year Filter Repo)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/infrastructure/persistence/LandingSectionRepository.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/infrastructure/persistence/LandingSectionRepository.java',
         language: 'java',
       },
       {
         title: 'LandingSectionServiceImpl.java',
-        module: 'gha-event-service (SLF4J Debug Logged Service)',
+        module: 'gha-admin-service (SLF4J Debug Logged Service)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/application/LandingSectionServiceImpl.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/application/LandingSectionServiceImpl.java',
         language: 'java',
       },
       {
         title: 'LandingSectionController.java',
-        module: 'gha-event-service (Paginated REST API + MDC)',
+        module: 'gha-admin-service (Paginated REST API + MDC)',
         relativePath:
-          'service/gha-event-service/src/main/java/com/gha/eventservice/api/LandingSectionController.java',
+          'service/gha-admin-service/src/main/java/com/gha/eventservice/api/LandingSectionController.java',
         language: 'java',
       },
       {
         title: 'application-dev.yml',
         module: 'Profile: DEV (Local Disk Storage + DEBUG Logs)',
         relativePath:
-          'service/gha-event-service/src/main/resources/application-dev.yml',
+          'service/gha-admin-service/src/main/resources/application-dev.yml',
         language: 'yaml',
       },
       {
         title: 'application-qa.yml',
         module: 'Profile: QA (QA SeaweedFS + DEBUG Logs)',
         relativePath:
-          'service/gha-event-service/src/main/resources/application-qa.yml',
+          'service/gha-admin-service/src/main/resources/application-qa.yml',
         language: 'yaml',
       },
       {
         title: 'application-prod.yml',
         module: 'Profile: PROD (Hosting Raja VPS + INFO Logs)',
         relativePath:
-          'service/gha-event-service/src/main/resources/application-prod.yml',
+          'service/gha-admin-service/src/main/resources/application-prod.yml',
         language: 'yaml',
       },
       {
         title: 'logback-spring.xml',
         module: 'SLF4J / Logback (dev, qa, prod Profiles)',
         relativePath:
-          'service/gha-event-service/src/main/resources/logback-spring.xml',
+          'service/gha-admin-service/src/main/resources/logback-spring.xml',
         language: 'xml',
       },
       {
@@ -2412,7 +2423,7 @@ async function startServer() {
         'dev',
         'gha-boot',
         'WARN',
-        'c.g.e.GhaEventServiceApplication',
+        'c.g.e.GhaAdminServiceApplication',
         'Production mode active but dist/index.html was not found. Automatically falling back to Vite live development middleware.'
       );
     }
@@ -2437,8 +2448,8 @@ async function startServer() {
       'dev',
       'gha-boot',
       'INFO',
-      'c.g.e.GhaEventServiceApplication',
-      `Started GhaEventServiceApplication & GHA Gateway on port ${PORT} (profiles: dev, qa, prod)`
+      'c.g.e.GhaAdminServiceApplication',
+      `Started GhaAdminServiceApplication & GHA Gateway on port ${PORT} (profiles: dev, qa, prod)`
     );
   });
 }

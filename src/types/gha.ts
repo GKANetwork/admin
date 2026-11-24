@@ -1,7 +1,9 @@
-export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'CONFERENCE' | 'GHASTEP' | 'GMEDKONNECT';
+export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'CONFERENCE' | 'GHASTEP' | 'GMEDKONNECT' | 'LANDING_CONTENT';
 
 export const normalizeLandingCategory = (value?: string | null): LandingCategory | null => {
   switch (value?.trim().toUpperCase()) {
+    case 'LANDING_CONTENT':
+      return 'LANDING_CONTENT';
     case 'CME':
       return 'CME';
     case 'GSI':
@@ -31,6 +33,12 @@ export interface CategoryMetadata {
 }
 
 export const LANDING_CATEGORIES: CategoryMetadata[] = [
+  {
+    code: 'LANDING_CONTENT',
+    shortLabel: 'Landing Content',
+    fullName: 'Landing Content',
+    clinicalFocus: 'Published content shown below the mobile landing page grid',
+  },
   {
     code: 'CME',
     shortLabel: 'CME',

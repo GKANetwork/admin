@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "npm --prefix ../auth run build && vite build",
     "start": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:auth": "tsx --test tests/authGateway.test.ts",
+    "predev": "npm --prefix ../auth run build"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

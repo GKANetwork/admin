@@ -37,7 +37,7 @@ export const FormLiveCardPreview: React.FC<FormLiveCardPreviewProps> = ({
     })),
   ];
 
-  const categoryLabel = category === 'AHS' ? 'Course / AHS' : category;
+  const categoryLabel = category === 'LANDING_CONTENT' ? 'Landing Content' : category === 'AHS' ? 'Course / AHS' : category;
   const categoryColor = category === 'CME' ? 'bg-blue-600' : category === 'GSI' ? 'bg-emerald-600' : category === 'AHS' ? 'bg-purple-600' : 'bg-amber-600';
 
   return (

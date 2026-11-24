@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {useEventAccess} from '../AuthGate';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LANDING_CATEGORIES,
   LandingCategory,
@@ -53,9 +54,8 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
   onDeleteRecord,
   onCreateClick,
   refreshTrigger,
-  validationNotice,
-  onClearValidationNotice,
 }) => {
+  const {can} = useEventAccess();
   const gatewayClient = GhaGatewayClientFactory.getClient();
 
   const [page, setPage] = useState<number>(0);
@@ -73,13 +73,17 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
     availableYears: [2026, 2025, 2024, 2023],
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState('');
+  const listingRequest = useRef(0);
 
   // View Record Modal State
   const [viewingRecord, setViewingRecord] = useState<LandingSectionRecord | null>(null);
   const [viewingImageIndex, setViewingImageIndex] = useState<number>(0);
 
   const loadPaginatedData = useCallback(async () => {
+    const requestId = ++listingRequest.current;
     setLoading(true);
+    setLoadError('');
     try {
       const response = await gatewayClient.getPaginatedListing({
           page,
@@ -95,19 +99,19 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
           search: searchQuery.trim() || undefined,
       });
 
+      if (requestId !== listingRequest.current) return;
       setPageData(response);
 
       // Update viewingRecord if currently open
-      if (viewingRecord) {
-        const updatedInPage = response.content.find((r) => r.id === viewingRecord.id);
-        if (updatedInPage) {
-          setViewingRecord(updatedInPage);
-        }
-      }
+      setViewingRecord((current) => current
+        ? response.content.find((record) => record.id === current.id) || current
+        : null);
     } catch (err) {
-    console.error('Failed to load paginated landing sections:', err);
+      if (requestId !== listingRequest.current) return;
+      console.error('Failed to load paginated landing sections:', err);
+      setLoadError('Could not load records for the selected vertical. Please retry.');
     } finally {
-      setLoading(false);
+      if (requestId === listingRequest.current) setLoading(false);
     }
   }, [
     gatewayClient,
@@ -120,11 +124,13 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
   ]);
 
   useEffect(() => {
-    loadPaginatedData();
+    void loadPaginatedData();
+    return () => { listingRequest.current += 1; };
   }, [loadPaginatedData]);
 
   // Any number of records can be published in each vertical.
   const handleInitiatePublish = async (record: LandingSectionRecord) => {
+    if (!can('events.publish')) return;
     await onTogglePublish(record);
     await loadPaginatedData();
   };
@@ -139,7 +145,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
   const formatCategoryName = (cat: LandingCategory): string => {
     const normalized = normalizeCat(cat);
-    return normalized === 'AHS' ? 'Course / AHS' : normalized;
+    return LANDING_CATEGORIES.find((category) => category.code.toUpperCase() === normalized.toUpperCase())?.shortLabel || normalized;
   };
 
   // Published records across verticals are always pinned at the top.
@@ -177,48 +183,11 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
   return (
     <div className="space-y-6">
-      {/* =========================================================================
-          POST-SAVE VALIDATION BANNER (4-CARD RULE CONTRACT CONFIRMATION)
-         ========================================================================= */}
-      {validationNotice && (
-        <div className="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-4 text-emerald-950 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in duration-300">
-          <div className="flex items-start gap-3">
-            <span className="p-2 rounded-lg bg-emerald-600 text-white shrink-0 mt-0.5">
-              <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-            </span>
-            <div className="space-y-0.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded">
-                  Validation Contract Passed
-                </span>
-                <span className="text-xs font-mono font-bold text-emerald-800">
-                  {validationNotice.timestamp}
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-emerald-950">
-                {validationNotice.title} · {formatCategoryName(validationNotice.category as LandingCategory)} ({validationNotice.eventYear})
-              </h3>
-              <p className="text-xs text-emerald-800 leading-relaxed">
-                {validationNotice.message}
-              </p>
-            </div>
-          </div>
-          {onClearValidationNotice && (
-              <button
-                type="button"
-                onClick={onClearValidationNotice}
-                className="px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer"
-                title="Dismiss validation notice"
-              >
-                Dismiss
-              </button>
-          )}
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200 rounded-xl p-4">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Landing content</h2>
+          <h2 className="text-sm font-bold text-slate-900">
+            {categoryFilter === 'ALL' ? 'All verticals' : formatCategoryName(categoryFilter)}
+          </h2>
           <p className="text-xs text-slate-500 mt-1">Published and draft records, grouped by vertical.</p>
         </div>
         <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -263,14 +232,21 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                     </td>
                   </tr>
                 ))
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center" role="alert">
+                    <p className="text-sm text-red-700">{loadError}</p>
+                    <button type="button" onClick={() => void loadPaginatedData()} className="mt-2 underline">Retry</button>
+                  </td>
+                </tr>
               ) : pageData.content.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 px-6 text-center">
                     <p className="text-sm font-semibold text-slate-900">
-                      No records found for the selected year / filter
+                      No records found for the selected vertical
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                      Try selecting &ldquo;All Years&rdquo; or clearing the search filter.
+                      Try selecting &ldquo;All verticals&rdquo;.
                     </p>
                   </td>
                 </tr>
@@ -390,6 +366,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                           </div>
                           <button
                             type="button"
+                            disabled={!can('events.publish')}
                             onClick={() => handleInitiatePublish(record)}
                             title={
                               record.published
@@ -477,6 +454,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
 
                           <button
                             type="button"
+                            disabled={!can('events.update')}
                             onClick={() => onEditRecord(record)}
                             className="px-2.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md inline-flex items-center gap-1 transition-colors cursor-pointer"
                             title="Edit record in Admin Form"
@@ -488,10 +466,12 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
                           <button
                             type="button"
                             onClick={async () => {
+                              if (!can('events.delete')) return;
                               await onDeleteRecord(record);
                               await loadPaginatedData();
                             }}
                             className="px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-md inline-flex items-center gap-1 transition-colors cursor-pointer"
+                            disabled={!can('events.delete')}
                             title="Delete record from event_db"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -756,6 +736,7 @@ export const LandingRecordsListingPage: React.FC<LandingRecordsListingPageProps>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={!can('events.update')}
                   onClick={() => {
                     const rec = viewingRecord;
                     setViewingRecord(null);
