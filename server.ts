@@ -44,7 +44,7 @@ const SEAWEED_S3_ENDPOINT = process.env.GHA_SEAWEEDFS_S3_ENDPOINT || 'http://103
 const SEAWEED_S3_ACCESS_KEY = process.env.GHA_SEAWEEDFS_S3_ACCESS_KEY || 'admin';
 const SEAWEED_S3_SECRET_KEY = process.env.GHA_SEAWEEDFS_S3_SECRET_KEY || 'qapassw0rd';
 const SEAWEED_S3_REGION = process.env.GHA_SEAWEEDFS_S3_REGION || 'us-east-1';
-const SEAWEED_S3_BUCKET = 'gha-files';
+const SEAWEED_S3_BUCKET = process.env.GHA_BLOB_COLLECTION || 'gha-files';
 
 function sha256Hex(data: Buffer | string): string {
   return crypto.createHash('sha256').update(data).digest('hex');
@@ -402,7 +402,7 @@ export interface BlobStoragePort {
 }
 
 class MultiProfileBlobStorageStrategy implements BlobStoragePort {
-  private activeProfile: GhaProfile = 'dev';
+  private activeProfile: GhaProfile = process.env.SPRING_PROFILES_ACTIVE === 'qa' ? 'qa' : process.env.SPRING_PROFILES_ACTIVE === 'prod' ? 'prod' : 'dev';
   private profileConfigs: Record<GhaProfile, ProfileConfiguration>;
   private localPhysicalRoot: string;
   private blobIndexFile: string;
@@ -2445,11 +2445,11 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(
-      'dev',
+      process.env.SPRING_PROFILES_ACTIVE === 'qa' ? 'qa' : process.env.SPRING_PROFILES_ACTIVE === 'prod' ? 'prod' : 'dev',
       'gha-boot',
       'INFO',
-      'c.g.e.GhaAdminServiceApplication',
-      `Started GhaAdminServiceApplication & GHA Gateway on port ${PORT} (profiles: dev, qa, prod)`
+      'GhaAdminUi',
+      `Admin UI/BFF listening on port ${PORT}`
     );
   });
 }
