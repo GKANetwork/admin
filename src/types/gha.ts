@@ -20,7 +20,7 @@ export const normalizeLandingCategory = (value?: string | null): LandingCategory
       return null;
   }
 };
-export type GhaProfile = 'dev' | 'qa' | 'prod';
+export type GhaProfile = 'dev' | 'qa' | 'prod' | 'vm';
 export type BlobProviderType = 'local-fs' | 'seaweedfs';
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 export type HistoryActionType = 'CREATED' | 'UPDATED' | 'PUBLISHED' | 'UNPUBLISHED';

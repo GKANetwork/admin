@@ -183,7 +183,7 @@ export const JavaBackendInspector: React.FC<JavaBackendInspectorProps> = ({
 
           {/* Interactive 3-Profile Switcher */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg shrink-0">
-            {(['dev', 'qa', 'prod'] as const).map((prof) => {
+            {(['dev', 'qa', 'prod', 'vm'] as const).map((prof) => {
               const isActive = gatewayConfig?.activeProfile === prof;
               return (
                 <button

@@ -228,7 +228,7 @@ async function getObjectFromSeaweedS3(
 }
 
 export type LandingCategory = 'CME' | 'GSI' | 'AHS' | 'Conference' | 'LANDING_CONTENT';
-export type GhaProfile = 'dev' | 'qa' | 'prod';
+export type GhaProfile = 'dev' | 'qa' | 'prod' | 'vm';
 export type BlobProviderType = 'local-fs' | 'seaweedfs';
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 export type HistoryActionType = 'CREATED' | 'UPDATED' | 'PUBLISHED' | 'UNPUBLISHED';
@@ -298,6 +298,13 @@ export interface ProfileConfiguration {
 }
 
 const PROFILE_PRESETS: Record<GhaProfile, ProfileConfiguration> = {
+  vm: {
+    profile: 'vm', blobProvider: 'seaweedfs',
+    blobStoreBasePath: process.env.GHA_BLOB_STORE_PATH || '/gha-files-vm',
+    seaweedFilerUrl: process.env.GHA_SEAWEEDFS_S3_ENDPOINT || 'http://127.0.0.1:8333',
+    mongoDatabase: process.env.GHA_MONGO_DB || 'event_vm',
+    mongoUri: process.env.GHA_MONGO_URI || 'mongodb://127.0.0.1:27017/event_vm', logLevel: 'INFO',
+  },
   dev: {
     profile: 'dev',
     blobProvider: 'seaweedfs',
@@ -402,7 +409,7 @@ export interface BlobStoragePort {
 }
 
 class MultiProfileBlobStorageStrategy implements BlobStoragePort {
-  private activeProfile: GhaProfile = process.env.SPRING_PROFILES_ACTIVE === 'qa' ? 'qa' : process.env.SPRING_PROFILES_ACTIVE === 'prod' ? 'prod' : 'dev';
+  private activeProfile: GhaProfile = process.env.SPRING_PROFILES_ACTIVE === 'vm' ? 'vm' : process.env.SPRING_PROFILES_ACTIVE === 'qa' ? 'qa' : process.env.SPRING_PROFILES_ACTIVE === 'prod' ? 'prod' : 'dev';
   private profileConfigs: Record<GhaProfile, ProfileConfiguration>;
   private localPhysicalRoot: string;
   private blobIndexFile: string;
@@ -1363,7 +1370,7 @@ async function startServer() {
       serviceName: 'gha-admin-service',
       javaVersion: '17 (Eclipse Temurin)',
       activeProfile: activeCfg.profile,
-      availableProfiles: ['dev', 'qa', 'prod'],
+      availableProfiles: ['dev', 'qa', 'prod', 'vm'],
       blobProvider: activeCfg.blobProvider,
       mongoDatabase: activeCfg.mongoDatabase,
       mongoUri: privileged ? activeCfg.mongoUri.replace(/(mongodb(?:\+srv)?:\/\/)([^/]*@)/, '$1[redacted]@') : 'Restricted',
@@ -1390,8 +1397,8 @@ async function startServer() {
 
   app.put('/api/v1/events/config/profile', (req: Request, res: Response) => {
     const { profile } = req.body as { profile?: GhaProfile };
-    if (!profile || !['dev', 'qa', 'prod'].includes(profile)) {
-      res.status(400).json({ error: 'Valid profile (dev, qa, prod) is required' });
+    if (!profile || !['dev', 'qa', 'prod', 'vm'].includes(profile)) {
+      res.status(400).json({ error: 'Valid profile (dev, qa, prod, vm) is required' });
       return;
     }
     const updated = blobStorage.switchProfile(profile);
@@ -2445,7 +2452,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     logger.log(
-      process.env.SPRING_PROFILES_ACTIVE === 'qa' ? 'qa' : process.env.SPRING_PROFILES_ACTIVE === 'prod' ? 'prod' : 'dev',
+      process.env.SPRING_PROFILES_ACTIVE === 'vm' ? 'vm' : process.env.SPRING_PROFILES_ACTIVE === 'qa' ? 'qa' : process.env.SPRING_PROFILES_ACTIVE === 'prod' ? 'prod' : 'dev',
       'gha-boot',
       'INFO',
       'GhaAdminUi',
