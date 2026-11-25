@@ -2424,16 +2424,10 @@ async function startServer() {
   const distPath = path.join(process.cwd(), 'dist');
   const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
 
-  if (process.env.NODE_ENV !== 'production' || !distIndexExists) {
-    if (process.env.NODE_ENV === 'production' && !distIndexExists) {
-      logger.log(
-        'dev',
-        'gha-boot',
-        'WARN',
-        'c.g.e.GhaAdminServiceApplication',
-        'Production mode active but dist/index.html was not found. Automatically falling back to Vite live development middleware.'
-      );
-    }
+  if (process.env.NODE_ENV === 'production' && !distIndexExists) {
+    throw new Error('Admin UI build missing: run npm run build in ui/admin before starting production.');
+  }
+  if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
