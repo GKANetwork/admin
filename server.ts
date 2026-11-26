@@ -1,3 +1,4 @@
+import {blobObjectKey} from './blobObjectKey';
 import {installAuthGateway} from './authGateway';
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
@@ -136,7 +137,7 @@ async function putObjectToSeaweedS3(
   buffer: Buffer,
   mimeType: string
 ): Promise<{ ok: boolean; status: number; eTag: string; s3Uri: string; errorText?: string }> {
-  const cleanKey = objectKey.replace(/^\/+/, '').replace(/^gha-files\/+/, '');
+  const cleanKey = blobObjectKey(objectKey, SEAWEED_S3_BUCKET);
   const encodedKey = cleanKey
     .split('/')
     .map((seg) => encodeURIComponent(seg))
@@ -208,7 +209,7 @@ async function listObjectsFromSeaweedS3(): Promise<LiveS3ObjectItem[]> {
 async function getObjectFromSeaweedS3(
   objectKey: string
 ): Promise<{ buffer: Buffer; contentType: string } | null> {
-  const cleanKey = objectKey.replace(/^\/+/, '').replace(/^gha-files\/+/, '');
+  const cleanKey = blobObjectKey(objectKey, SEAWEED_S3_BUCKET);
   const encodedKey = cleanKey
     .split('/')
     .map((seg) => encodeURIComponent(seg))
@@ -2036,7 +2037,7 @@ async function startServer() {
       const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
       const objectKey =
         customKey && customKey.trim()
-          ? customKey.trim().replace(/^\/+/, '').replace(/^gha-files\/+/, '')
+          ? blobObjectKey(customKey.trim(), SEAWEED_S3_BUCKET)
           : cleanName;
       const rawBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
       const buffer = Buffer.from(rawBase64, 'base64');
