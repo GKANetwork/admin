@@ -219,8 +219,14 @@ async function getObjectFromSeaweedS3(
   const response = await fetch(targetUrl.toString(), {
     method: 'GET',
     headers,
+    signal: AbortSignal.timeout(10000),
   });
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const storageRequestId = response.headers.get('x-amz-request-id') || 'unavailable';
+    console.error(`[blob-read] url=${targetUrl.origin}${targetUrl.pathname} status=${response.status} requestId=${storageRequestId}`);
+  }
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`SeaweedFS GET returned HTTP ${response.status}`);
   const arrayBuf = await response.arrayBuffer();
   return {
     buffer: Buffer.from(arrayBuf),
@@ -2091,7 +2097,15 @@ async function startServer() {
       res.sendFile(resolved.filePath);
       return;
     }
-    const remoteObj = await getObjectFromSeaweedS3(blobPath).catch(() => null);
+    let remoteObj;
+    try {
+      remoteObj = await getObjectFromSeaweedS3(blobPath);
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : 'Unknown storage error';
+      console.error(`[blob-read] bucket=${SEAWEED_S3_BUCKET} key=${blobObjectKey(blobPath, SEAWEED_S3_BUCKET)}: ${cause}`);
+      res.status(502).send('Blob storage request failed');
+      return;
+    }
     if (remoteObj) {
       res.setHeader('Content-Type', remoteObj.contentType);
       res.send(remoteObj.buffer);
